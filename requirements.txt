@@ -2,3 +2,4 @@ azure-cognitiveservices-vision-computervision
 msrest
 langdetect
 yake
+spacy

@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 from collections import deque
 import yake
+import spacy
 import re
 
 
@@ -57,19 +58,45 @@ def sanitize_filename(filename: str) -> str:
     # Remove specified words
     for word in words_to_remove:
         # Using word boundaries (\b) to ensure only whole words are matched
-        regex_pattern = r'\b' + re.escape(word) + r'\b'
-        filename = re.sub(regex_pattern, '', filename)
+        regex_pattern = r'\s*\b' + re.escape(word) + r'\b\s*'
+        filename = re.sub(regex_pattern, ' ', filename)  # Replace with a single space to avoid concatenation of words
 
     return filename
 
 def find_dates(text):
     # Pattern to match YYYYMMDD or YYYY-MM-DD, ensuring no digits before or after
     pattern = r'(?<!\d)(\d{4}-\d{2}-\d{2}|\d{8})(?!\d)'
-    
-    # Find all matches in the text
     matches = re.findall(pattern, text)
     
     return matches
+
+def get_words_of_interest(text):
+    # Specify the categories of interest
+    categories = ['PERSON', 'NORP', 'FAC', 'ORG', 'GPE', 'LOC', 'PRODUCT', 'EVENT', 'WORK_OF_ART']
+
+    # Load spaCy model
+    nlp = spacy.load("en_core_web_sm")
+
+    # Process text for NER
+    doc = nlp(text)
+
+    # Find words of interest
+    words = [ent.text for ent in doc.ents if ent.label_ in categories]
+
+    # People or words we want to include if present
+    persons = ['Hunter','Biden','Obama','Trump','Putin','Merkel','Macron','Johnson','Boris','Erdogan','Xi','Jinping','Kim','Jong-un',
+               'Bolsonaro','Modi','Morrison','Trudeau','Abe','Suga','Moon', 'Musk', 'Bezos', 'Gates', 'Zuckerberg', 'Buffett', 'Ellison',
+               'Page', 'Brin', 'Nadella', 'Pichai', 'Cook', 'Dorsey', 'Zuckerberg', 'Hastings', 'Chesky', 'Kalanick', 'Khosrowshahi',
+               'HRC', 'Sanders', 'Pelosi', 'Schumer', 'McConnell', 'Graham', 'Cruz', 'Harris', 'Warren', 'AOC', 'Omar', 'Tlaib', 'Boebert',
+               'Greene', 'Stefanik', 'Cheney', 'McCarthy', 'Jordan', 'Gaetz', 'Hawley', 'Cawthorn', 'Cruz', 'Rubio', 'Cotton', 'Paul',
+               'Haley', 'Pompeo', 'Carson', 'Pence', 'Kushner', 'Ivanka', 'Barr', 'Flynn', 'Manafort', 'Stone', 'Cohen', 'Giuliani',
+               'Bildt', 'Löfven', 'Reinfeldt', 'Sahlin', 'Björklund', 'Sjöstedt', 'Lööf', 'Busch', 'Björn', 'Bodström', 'Bodin', 'Bodén',]
+    
+    # Add the persons to the words list if they are present in the text
+    for person in persons:
+        if person in text:
+            words.append(person)
+    return " ".join(words)
 
 def generate_new_filename(image_path):
     """
@@ -150,6 +177,13 @@ def generate_new_filename(image_path):
     for kw in keywords:
         ocr_kw += kw[0] + " "
 
+    print(f"OCR keywords: {ocr_kw}")
+    
+    # Add back any words of people, places, organizations etc to the OCR keywords
+    words = get_words_of_interest(ocr_text)
+    print(f"Words of interest: {words}")
+    ocr_kw = words + ocr_kw 
+
     # Extract keywords from the description text
     language = "sv" if ocr_lang == "sv" else "en"
     kw_extractor = yake.KeywordExtractor(lan=language, n=max_ngram_size, dedupLim=deduplication_threshold, top=numOfKeywords, features=None)
@@ -159,7 +193,6 @@ def generate_new_filename(image_path):
     for kw in keywords:
         descr_kw += kw[0] + " "
 
-    print(f"OCR keywords: {ocr_kw}")
     print(f"Description keywords: {descr_kw}")
 
     # If there's a date in the image path (including it's file name), use that
@@ -173,7 +206,6 @@ def generate_new_filename(image_path):
     # truncate the text to 135 characters for filename compatibility (Android file transfer?)
     new_file_name = new_file_name[:135]
     new_file_name = sanitize_filename(new_file_name)
-    # print(new_file_name)
 
     return " ".join((set(new_file_name.split())))
 
@@ -213,7 +245,7 @@ def process_images(source_folder, target_folder, rate_limit_per_minute=9):
     
     # Calculate total number of files once
     total_files = len(list(Path(source_folder).glob('*')))
-    
+    processed_files = 0
     for i, image in enumerate(Path(source_folder).glob('*'), start=0):
         # Process only files
         if image.is_file():
@@ -252,7 +284,8 @@ def process_images(source_folder, target_folder, rate_limit_per_minute=9):
             timestamps.append(time.time())
             
             print(f"Processed: {new_path}")
-    print(f"Finished processing {total_files} images.")
+            processed_files += 1
+    print(f"Finished processing {processed_files} images.")
 
 def main():
     # Specify your source and target folders

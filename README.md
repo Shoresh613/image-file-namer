@@ -14,7 +14,7 @@ Words to remove from the filenames are based on English and Swedish, but can eas
 
 ![Example Image](assets/States%20CIA%20United%20LTG%20America%20Morrell%20director%20Mike%20deputy%2020230422%20nypos%20Flynn.jpg "Example image")
 
-Generated filename: `"States CIA United LTG America Morrell director Mike deputy 20230422 nypos Flynn.jpg"`
+Generated filename: `"LTG Mike Biden Flynn 20230422 CIA Morrell States United America Hun.jpg"`
 
 ### Folders
 All relative to the git directory:
@@ -25,7 +25,14 @@ All relative to the git directory:
 | `./images/named_images` | Named images are stored here           |
 
 ### Environment variables
-| Variable               | Brief Description                                  |
+| Variable               | Description                                        |
 |------------------------|----------------------------------------------------|
 | `AZURE_IMAGE_ENDPOINT` | Endpoint URL for the Azure Image service           |
 | `AZURE_IMAGE_KEY`      | Authentication key for accessing the Azure Image service |
+
+###
+Required step to ensure personal names are kept as keywords:
+`python -m spacy download en_core_web_sm`
+
+### Still to do
+Improved understanding of the images would be nice. Also a better keyword extraction. As seen in the example, 'Hunter' is turned into 'Hun', also nypost would be nice to have included. 
