@@ -3,18 +3,25 @@
 Simple script that uses Azure AI Vision (to get a textual description) and a local NLP library (to extract keywords) to rename image files, giving them descriptive filenames.
 Example use cases are screenshots or downloaded images, to be able to find them based on a textual search on the filename.
 
-It requires an API key and path at MicroSoft Azure that you need to set as environment variables (see below). 
+It requires an API key and path at Microsoft Azure that you need to set as environment variables (see below). 
 Naturally, there is a cost involved for using the API, unless you happen to be a student, in which case you get 5000 such API calls for free each months. 
 
 The script makes sure it doesn't exceed the limit of 20 API calls per minute (2 calls for every image which leads to a processing speed of 9 images per minute to be on the safe side). It does not keep track of exceeding 5000 per month, but if more calls are made, they will simply be refused unless you pay for more.
 
-Words to remove from the filenames are based on English and Swedish, but can easily be updated.
+Words to keep or remove from the filenames are specified in separate files:
+
+* `names_to_include.txt`: Names to always include in the filename if detected (case sensitive) 
+* `words_to_include.txt`: Words to always include in the filename if detected (case insensitive)
+* `words_to_remove.txt`: Words never to include in the filename (case insensitive)
 
 **Example:**
+Image resized using `resize_images.py`and file size cut to less than 10% of the original file size. Then run through `image_file_namer.py`to generate the filename. 
 
-![Example Image](assets/States%20CIA%20United%20LTG%20America%20Morrell%20director%20Mike%20deputy%2020230422%20nypos%20Flynn.jpg "Example image")
+![Example Image](assets/20230422%20United%20nypost%20America%20biden%20overthrow%20prompted%20Hunter%20false%20CIA%20letter%20States%20write%20Flynn%20campaign%20Mike%20signed%20deputy%20Morrell.jpg "Example image")
 
-Generated filename: `"20230422 LTG States participants Morrell campaign CIA apr write Flynn Biden America Hunter false signed deputy Mike letter United promp.jpg"`
+Generated filename: `"20230422 United nypost America biden overthrow prompted Hunter false CIA letter States write Flynn campaign Mike signed deputy Morrell.jpg"`
+
+The date is generated from the filename. Edit the script to suit your preferred date format.
 
 ### Folders
 All relative to the git directory:
@@ -35,7 +42,7 @@ Required step to ensure personal names are kept as keywords:
 `python -m spacy download en_core_web_sm`
 
 ### Still to do
-Improved understanding of the images would be nice. Also a better keyword extraction. As seen in the example, 'Hunter' is turned into 'Hun', also nypost would be nice to have included. 
+Improved understanding of the images would be nice. But that would mean training a model.
 
 ### Extra related scripts developed in the process
 
@@ -45,4 +52,4 @@ Improved understanding of the images would be nice. Also a better keyword extrac
 
 `resize_images.py`: Resizes images 50% and stores as jpeg (70% quality), suitable for downscaling screenshots for storage.
 
-`words_to_set.py`: Reads a text file consisting of words you want to keep in the description, filters out words with numbers in them, removes duplicates, sorts the words and outputs a file with every words on a line of its own. Can be used to generate `filtered_words.txt` used by the main script.
+`words_to_set.py`: Reads a text file consisting of words you want to keep in the description, filters out words with numbers in them, removes duplicates, sorts the words and outputs a file with every words on a line of its own. Can be used to generate the word list files used by the main script, e.g. `words_to_include.txt` etc.

@@ -14,8 +14,8 @@ import re
 # Note: These environment variables should be set before running the script
 subscription_key = os.getenv('AZURE_IMAGE_KEY')
 endpoint = os.getenv('AZURE_IMAGE_ENDPOINT')
-people_to_include_file = './wordlists/people_to_include.txt' # Create file to use the file, one word on each line
-words_to_include_file = './wordlists/filtered_words.txt' # Create file to use the file, one word on each line
+names_to_include_file = './wordlists/names_to_include.txt' # Create file to use the file, one word on each line
+words_to_include_file = './wordlists/words_to_include.txt' # Create file to use the file, one word on each line
 words_to_remove_file = './wordlists/words_to_remove.txt' # Create file to use the file, one word on each line
 
 # Check if the variables were found
@@ -105,8 +105,6 @@ def fix_common_ocr_mistakes(text:str):
 def get_words_of_interest(text):
     # Specify the categories of interest
     categories = ['PERSON', 'NORP', 'FAC', 'ORG', 'GPE', 'LOC', 'PRODUCT', 'EVENT', 'WORK_OF_ART']
-
-    # Load spaCy model
     nlp = spacy.load("en_core_web_sm")
 
     # Process text for NER
@@ -115,28 +113,25 @@ def get_words_of_interest(text):
     # Find words of interest
     words = [ent.text for ent in doc.ents if ent.label_ in categories]
     
-    # Remove duplicates in terms of upper/lower case
-    words = []
-
-    lower_case_text = text.lower()
-
     # People or words we want to include if present
-    persons = list(load_words_from_file(people_to_include_file))
+    names = list(load_words_from_file(names_to_include_file))
     
-    # Add the persons to the words list if they are present in the text
-    for person in persons:
-        # Create a regex pattern for the person with word boundaries and case-insensitive matching
-        pattern = r'\b' + re.escape(person.lower()) + r'\b'
+    # Add the names to the words list if they are present in the text
+    for name in names:
+        # Create a regex pattern for the name with word boundaries
+        pattern = r'\b' + re.escape(name) + r'\b'
         
-        # Use re.search() to find the pattern in the lower_case_text
-        if re.search(pattern, lower_case_text):
-            words.append(person)
+        # Use re.search() to find the pattern in the text
+        if re.search(pattern, text):
+            words.append(name)
 
     # Add words from the file if it exists in the text
-    words_from_file = load_words_from_file(words_to_include_file)
-    if words_from_file:
-        for word in words_from_file:
-            if word in text:
+    words_to_include = load_words_from_file(words_to_include_file)
+    lower_case_text = text.lower()
+
+    if words_to_include:
+        for word in words_to_include:
+            if word in lower_case_text:
                 words.append(word)
     words = list(set(words))
     return " ".join(words) + " "
@@ -248,9 +243,9 @@ def generate_new_filename(image_path):
     new_file_name = " ".join((set(new_file_name.split())))
 
     if found_dates:
-        new_file_name = sanitize_filename(found_dates).strip() + " " + new_file_name
+        new_file_name = sanitize_filename(found_dates).strip() + " " + new_file_name.strip()
     # truncate the text to 135 characters for filename compatibility (Android file transfer?)
-    new_file_name = new_file_name[:135]
+    new_file_name = new_file_name[:135].strip()
 
     return new_file_name
 

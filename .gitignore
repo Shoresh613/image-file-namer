@@ -170,3 +170,5 @@ filtered_words_DONT_USE.txt
 clean_list.py
 count_word_type.py
 wordlists/words_to_remove.txt
+wordlists/names_to_include.txt
+wordlists/words_to_include.txt
