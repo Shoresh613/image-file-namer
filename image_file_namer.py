@@ -14,6 +14,9 @@ import re
 # Note: These environment variables should be set before running the script
 subscription_key = os.getenv('AZURE_IMAGE_KEY')
 endpoint = os.getenv('AZURE_IMAGE_ENDPOINT')
+people_to_include_file = './wordlists/people_to_include.txt' # Create file to use the file, one word on each line
+words_to_include_file = './wordlists/filtered_words.txt' # Create file to use the file, one word on each line
+words_to_remove_file = './wordlists/words_to_remove.txt' # Create file to use the file, one word on each line
 
 # Check if the variables were found
 if subscription_key and endpoint:
@@ -47,28 +50,57 @@ def sanitize_filename(filename: str) -> str:
     customization of the `illegal_chars` and `words_to_remove` lists may be necessary to meet specific
     requirements.
     """
-    illegal_chars = '<>:."/\\|?*βß<>%&\{\}[]()$!#@;^`~\'’”“„‚‘´¨'
-    words_to_remove = ['text', 'graphical', 'and', 'or', 'in', 'as', 'of', 'is', 'so', 'the', 'prenumerera', 'vid', 'på', 'i', 'och', 'eller',
-                        'ägg', 'Återpublicera', 'ditt', 'Gillamarkeringar', 'Visningar', 'application', 'Översätt', 'upp', 'till', 'en', 'ett',
-                         'inlägget', 'två', 'tre', 'on', 'trending', 'som', 'that', 'this', 'with', 'for', 'from', 'your', 'you', 'are', 'have',
-                         'at', 'bit.ly', 'Återpubliceringar', 'Bokmärken', 'bitIy', 'website', 'screenshot', 'user', 'interface']
+    illegal_chars = '<>:,.•=-"/\\|?*βß<>%&\{\}[]()$!#@;^`~\'’”“„‚‘´¨'
+    
     for char in illegal_chars:
         filename = filename.replace(char, '')
 
     # Remove specified words
+    words_to_remove = list(load_words_from_file(words_to_remove_file))
     for word in words_to_remove:
         # Using word boundaries (\b) to ensure only whole words are matched
         regex_pattern = r'\s*\b' + re.escape(word) + r'\b\s*'
-        filename = re.sub(regex_pattern, ' ', filename)  # Replace with a single space to avoid concatenation of words
+        filename = re.sub(regex_pattern, ' ', filename, flags=re.IGNORECASE)  # Replace with a single space to avoid concatenation of words
 
     return filename
 
+def load_words_from_file(file_path):
+    input_file_path = file_path
+    words_set = {''}
+
+    try:
+        with open(input_file_path, 'r', encoding='utf-8') as file:
+            for line in file:
+                word = line.strip()
+                words_set.add(word)
+    except FileNotFoundError:
+        print(f"File '{input_file_path}' not found.")
+        return None
+    
+    return words_set
+
 def find_dates(text):
     # Pattern to match YYYYMMDD or YYYY-MM-DD, ensuring no digits before or after
-    pattern = r'(?<!\d)(\d{4}-\d{2}-\d{2}|\d{8})(?!\d)'
+    pattern = r'(?<!\d)(20\d{2}-\d{2}-\d{2}|20\d{6})(?!\d)'
     matches = re.findall(pattern, text)
     
     return matches
+
+def fix_common_ocr_mistakes(text:str):
+    text = text.replace('OAnon', 'QAnon')
+    text = text.replace('Trurnp', 'Trump')
+
+    # Use regex to remove string of numbers followed by either K or M (for number of likes or views)
+    text = re.sub(r'\d+[KM]', '', text)
+
+    # Remove single characters that are not part of a word
+    text = re.sub(r'\b\w\b', '', text)
+
+    # Remove more than 1 consecutive space
+    text = re.sub(r'\s{2,}', ' ', text).strip()
+     
+
+    return text
 
 def get_words_of_interest(text):
     # Specify the categories of interest
@@ -82,21 +114,32 @@ def get_words_of_interest(text):
 
     # Find words of interest
     words = [ent.text for ent in doc.ents if ent.label_ in categories]
+    
+    # Remove duplicates in terms of upper/lower case
+    words = []
+
+    lower_case_text = text.lower()
 
     # People or words we want to include if present
-    persons = ['Hunter','Biden','Obama','Trump','Putin','Merkel','Macron','Johnson','Boris','Erdogan','Xi','Jinping','Kim','Jong-un',
-               'Bolsonaro','Modi','Morrison','Trudeau','Abe','Suga','Moon', 'Musk', 'Bezos', 'Gates', 'Zuckerberg', 'Buffett', 'Ellison',
-               'Page', 'Brin', 'Nadella', 'Pichai', 'Cook', 'Dorsey', 'Zuckerberg', 'Hastings', 'Chesky', 'Kalanick', 'Khosrowshahi',
-               'HRC', 'Sanders', 'Pelosi', 'Schumer', 'McConnell', 'Graham', 'Cruz', 'Harris', 'Warren', 'AOC', 'Omar', 'Tlaib', 'Boebert',
-               'Greene', 'Stefanik', 'Cheney', 'McCarthy', 'Jordan', 'Gaetz', 'Hawley', 'Cawthorn', 'Cruz', 'Rubio', 'Cotton', 'Paul',
-               'Haley', 'Pompeo', 'Carson', 'Pence', 'Kushner', 'Ivanka', 'Barr', 'Flynn', 'Manafort', 'Stone', 'Cohen', 'Giuliani',
-               'Bildt', 'Löfven', 'Reinfeldt', 'Sahlin', 'Björklund', 'Sjöstedt', 'Lööf', 'Busch', 'Björn', 'Bodström', 'Bodin', 'Bodén',]
+    persons = list(load_words_from_file(people_to_include_file))
     
     # Add the persons to the words list if they are present in the text
     for person in persons:
-        if person in text:
+        # Create a regex pattern for the person with word boundaries and case-insensitive matching
+        pattern = r'\b' + re.escape(person.lower()) + r'\b'
+        
+        # Use re.search() to find the pattern in the lower_case_text
+        if re.search(pattern, lower_case_text):
             words.append(person)
-    return " ".join(words)
+
+    # Add words from the file if it exists in the text
+    words_from_file = load_words_from_file(words_to_include_file)
+    if words_from_file:
+        for word in words_from_file:
+            if word in text:
+                words.append(word)
+    words = list(set(words))
+    return " ".join(words) + " "
 
 def generate_new_filename(image_path):
     """
@@ -123,12 +166,13 @@ def generate_new_filename(image_path):
     client = ComputerVisionClient(endpoint, CognitiveServicesCredentials(subscription_key))
     descr_text=""
 
-    with open(image_path, "rb") as image_stream:
-        description_results = client.describe_image_in_stream(image_stream)
-        print("Beskrivning: ", end="")
-        for caption in description_results.captions:
-            print("'{}' med säkerhet {:.2f}%".format(caption.text, caption.confidence * 100))
-            descr_text += caption.text
+    # Description text doesn't produce much useful information in my use case, skipping and can double processing speed and images per month
+    # with open(image_path, "rb") as image_stream:
+    #     description_results = client.describe_image_in_stream(image_stream)
+    #     print("Beskrivning: ", end="")
+    #     for caption in description_results.captions:
+    #         print("'{}' med säkerhet {:.2f}%".format(caption.text, caption.confidence * 100))
+    #         descr_text += caption.text
 
     # Recognize famous people (only available for microsoft managed accounts)
     # with open(image_path, "rb") as image_stream:
@@ -171,7 +215,7 @@ def generate_new_filename(image_path):
     language = "sv" if ocr_lang == "sv" else "en"
         
     kw_extractor = yake.KeywordExtractor(lan=language, n=max_ngram_size, dedupLim=deduplication_threshold, top=numOfKeywords, features=None)
-    keywords = kw_extractor.extract_keywords(ocr_text)
+    keywords = kw_extractor.extract_keywords(sanitize_filename(ocr_text))
 
     ocr_kw = ""
     for kw in keywords:
@@ -196,18 +240,19 @@ def generate_new_filename(image_path):
     print(f"Description keywords: {descr_kw}")
 
     # If there's a date in the image path (including it's file name), use that
-    found_dates = str(find_dates(str(image_path))).replace('-','') + " "
-    if found_dates:
-        new_file_name = found_dates + descr_kw + ocr_kw if ocr_kw != "" else found_dates + descr_kw.strip()
-    
-    else:
-        new_file_name = descr_kw + ocr_kw if ocr_kw != "" else descr_kw.strip()
+    new_file_name = descr_kw + ocr_kw if ocr_kw != "" else descr_kw.strip()
+    found_dates = str(find_dates(str(image_path))).replace('-','')
 
+
+    new_file_name = sanitize_filename(fix_common_ocr_mistakes(new_file_name))
+    new_file_name = " ".join((set(new_file_name.split())))
+
+    if found_dates:
+        new_file_name = sanitize_filename(found_dates).strip() + " " + new_file_name
     # truncate the text to 135 characters for filename compatibility (Android file transfer?)
     new_file_name = new_file_name[:135]
-    new_file_name = sanitize_filename(new_file_name)
 
-    return " ".join((set(new_file_name.split())))
+    return new_file_name
 
 def process_images(source_folder, target_folder, rate_limit_per_minute=9):
     """
@@ -258,7 +303,7 @@ def process_images(source_folder, target_folder, rate_limit_per_minute=9):
             
             # Check if processing limit has been reached
             if len(timestamps) >= rate_limit_per_minute:
-                sleep_time = 60 - (current_time - timestamps[0])
+                sleep_time = 61 - (current_time - timestamps[0])
                 print(f"Rate limit reached, sleeping for {sleep_time:.2f} seconds.")
                 time.sleep(sleep_time)
                 # After sleeping, update current time
@@ -292,7 +337,8 @@ def main():
     source_folder = './images'
     target_folder = './images/named_images'
     # Processing maximum of 10 images per minute as 2 calls and 20 max per minute, 9 to be safe
-    process_images(source_folder, target_folder, 9)
+    # But if not using the description text, can process 18 images per minute
+    process_images(source_folder, target_folder, 17)
 
 if __name__ == "__main__":
     main()

@@ -14,7 +14,7 @@ Words to remove from the filenames are based on English and Swedish, but can eas
 
 ![Example Image](assets/States%20CIA%20United%20LTG%20America%20Morrell%20director%20Mike%20deputy%2020230422%20nypos%20Flynn.jpg "Example image")
 
-Generated filename: `"LTG Mike Biden Flynn 20230422 CIA Morrell States United America Hun.jpg"`
+Generated filename: `"20230422 LTG States participants Morrell campaign CIA apr write Flynn Biden America Hunter false signed deputy Mike letter United promp.jpg"`
 
 ### Folders
 All relative to the git directory:
@@ -36,3 +36,13 @@ Required step to ensure personal names are kept as keywords:
 
 ### Still to do
 Improved understanding of the images would be nice. Also a better keyword extraction. As seen in the example, 'Hunter' is turned into 'Hun', also nypost would be nice to have included. 
+
+### Extra related scripts developed in the process
+
+`clean_file_name.py`: Removes illegal charachters from the filename, and shortens it to enable transfer to Android (135 char limit? At least for me when transferring from Windows).
+
+`name_extractor.py`: Extracts personal names from a body of text.
+
+`resize_images.py`: Resizes images 50% and stores as jpeg (70% quality), suitable for downscaling screenshots for storage.
+
+`words_to_set.py`: Reads a text file consisting of words you want to keep in the description, filters out words with numbers in them, removes duplicates, sorts the words and outputs a file with every words on a line of its own. Can be used to generate `filtered_words.txt` used by the main script.
