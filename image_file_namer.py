@@ -50,7 +50,7 @@ def sanitize_filename(filename: str) -> str:
     customization of the `illegal_chars` and `words_to_remove` lists may be necessary to meet specific
     requirements.
     """
-    illegal_chars = '<>:,.•=-"/\\|?*βß<>%&\{\}[]()$!#@;^`~\'’”“„‚‘´¨'
+    illegal_chars = '<>:,.•=-"/\\|?*βß<>%&\{\}[]()$!#@;^`~\'’”“„‚‘´¨»«'
     
     for char in illegal_chars:
         filename = filename.replace(char, '')
@@ -89,6 +89,8 @@ def find_dates(text):
 def fix_common_ocr_mistakes(text:str):
     text = text.replace('OAnon', 'QAnon')
     text = text.replace('Trurnp', 'Trump')
+    text = text.replace('exarnple', 'example')
+    text = text.replace('ernptied', 'emptied')
 
     # Use regex to remove string of numbers followed by either K or M (for number of likes or views)
     text = re.sub(r'\d+[KM]', '', text)
@@ -136,6 +138,17 @@ def get_words_of_interest(text):
     words = list(set(words))
     return " ".join(words) + " "
 
+def check_time_in_string(text):
+    # Use regular expression to search for the pattern "after [number] second" to know for how long to wait
+    match = re.search(r"after (\d+) second", text)
+    
+    if match:
+        seconds = int(match.group(1))
+        return seconds
+    else:
+        # If the pattern is not found, return None
+        return None
+
 def generate_new_filename(image_path):
     """
     Generates a new filename for an image based on its content, recognized text, and descriptive elements.
@@ -176,10 +189,29 @@ def generate_new_filename(image_path):
     #     for celebrity in domain_model_results.result["celebrities"]:
     #         print(celebrity["name"])
   
+    # If there's a date in the image path (including it's file name), use that
+    found_dates = str(find_dates(str(image_path))).replace('-','')
+
     # OCR
     ocr_text = ""
+
     with open(image_path, "rb") as image_stream:
-        ocr_results = client.recognize_printed_text_in_stream(image_stream)
+        try:
+            ocr_results = client.recognize_printed_text_in_stream(image_stream)
+        except Exception as e:
+            print(f"OCR failed: {e}")
+            seconds = check_time_in_string(str(e))
+            if seconds is not None:
+                print(f"\nHit limit. Waiting for {seconds} seconds before trying again...")
+                time.sleep(seconds)
+                with open(image_path, "rb") as image_stream:
+                    try:
+                        ocr_results = client.recognize_printed_text_in_stream(image_stream)
+                    except Exception as e:
+                        print(f"OCR failed again: {e}")
+                        # This needs to be adapted in case desciptive text or famous people recognition is used
+                        return found_dates if found_dates else "unnamed"
+                    
         print("\nText funnen i bilden:")
         for region in ocr_results.regions:
             for line in region.lines:
@@ -234,10 +266,7 @@ def generate_new_filename(image_path):
 
     print(f"Description keywords: {descr_kw}")
 
-    # If there's a date in the image path (including it's file name), use that
     new_file_name = descr_kw + ocr_kw if ocr_kw != "" else descr_kw.strip()
-    found_dates = str(find_dates(str(image_path))).replace('-','')
-
 
     new_file_name = sanitize_filename(fix_common_ocr_mistakes(new_file_name))
     new_file_name = " ".join((set(new_file_name.split())))
@@ -304,14 +333,14 @@ def process_images(source_folder, target_folder, rate_limit_per_minute=9):
             
             # Check if processing limit has been reached
             if len(timestamps) >= rate_limit_per_minute:
-                sleep_time = 61 - (current_time - timestamps[0])
+                sleep_time = 61 - (current_time - timestamps[0]) 
                 print(f"Rate limit reached, sleeping for {sleep_time:.2f} seconds.")
                 time.sleep(sleep_time)
                 # After sleeping, update current time
                 current_time = time.time()
 
             # Proceed with processing
-            new_filename = generate_new_filename(image) + image.suffix
+            new_filename = generate_new_filename(image).strip() + image.suffix
             new_path = Path(target_folder) / new_filename
             
             # Example operation: Rename (move) file to new location with a new name
@@ -334,11 +363,12 @@ def process_images(source_folder, target_folder, rate_limit_per_minute=9):
     print(f"Finished processing {processed_files} images.")
 
 def main():
-    # Specify your source and target folders
+    # Specify your source and target folders. Could be the Screenshot folder directly if you're brave.
     source_folder = './images'
     target_folder = './images/named_images'
     # Processing maximum of 10 images per minute as 2 calls and 20 max per minute, 9 to be safe
     # But if not using the description text, can process 18 images per minute, or 17 to be on the safe side
+    # Seems it doesn't only count per minute, so finetuning to quarter of a minute instead, to avoid Exceptions.
     process_images(source_folder, target_folder, 17)
 
 if __name__ == "__main__":
