@@ -6,13 +6,15 @@ Example use cases are screenshots or downloaded images, to be able to find them 
 It requires an API key and path at Microsoft Azure that you need to set as environment variables (see below). 
 Naturally, there is a cost involved for using the API, unless you happen to be a student, in which case you get 5000 such API calls for free each months. 
 
-The script makes sure it doesn't exceed the limit of 20 API calls per minute (2 calls for every image which leads to a processing speed of 9 images per minute to be on the safe side). It does not keep track of exceeding 5000 per month, but if more calls are made, they will simply be refused unless you pay for more.
+The script makes sure it doesn't exceed the limit of 20 API calls per minute (1-3 calls for every image, default is 1 call, which leads to a processing speed of 4-18 images per minute to be on the safe side). It does not keep track of exceeding 5000 per month, but if more calls are made, they will simply be refused unless you pay for more.
 
-Words to keep or remove from the filenames are specified in separate files:
+There are some tweaks to be made to get the best results for your situation, which include creating the following files, where words to keep or remove from the filenames are specified:
 
 * `names_to_include.txt`: Names to always include in the filename if detected (case sensitive) 
 * `words_to_include.txt`: Words to always include in the filename if detected (case insensitive)
 * `words_to_remove.txt`: Words never to include in the filename (case insensitive)
+
+If these files are nonexistent, you might not get all the words you want, and you might see words you don't want. It is possible to create the files by extracting personal names using `words_to_set.py` for instance, and adapting it for the other files.
 
 **Example:**
 Image resized using `resize_images.py`and file size cut to less than 10% of the original file size. Then run through `image_file_namer.py`to generate the filename. 

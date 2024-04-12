@@ -2,14 +2,11 @@
 
 import spacy
 
-# Load the English language model
 nlp = spacy.load("en_core_web_sm")
 
-# Read text from a file
 with open("filenames.txt", "r") as file:
     text = file.read()
 
-# Process the text
 print("Processing text...")
 doc = nlp(text)
 

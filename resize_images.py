@@ -26,7 +26,7 @@ def resize_image(input_path, output_path):
 
 # Iterate over all files in the source directory
 for filename in os.listdir(source_directory):
-    if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
+    if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp')):
         input_path = os.path.join(source_directory, filename)
         base_filename = os.path.splitext(filename)[0]
         output_path = os.path.join(target_directory, f"{base_filename}.jpg")

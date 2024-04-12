@@ -249,6 +249,12 @@ def generate_new_filename(image_path):
 
     return new_file_name
 
+def count_image_files(directory):
+    files = os.listdir(directory)
+    image_files = [file for file in files if file.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp'))]
+    
+    return len(image_files)
+
 def process_images(source_folder, target_folder, rate_limit_per_minute=9):
     """
     Processes and renames image files from a source folder to a target folder with rate limiting.
@@ -284,13 +290,13 @@ def process_images(source_folder, target_folder, rate_limit_per_minute=9):
     timestamps = deque()
     
     # Calculate total number of files once
-    total_files = len(list(Path(source_folder).glob('*')))
+    total_files = count_image_files(source_folder)
     processed_files = 0
     for i, image in enumerate(Path(source_folder).glob('*'), start=0):
-        # Process only files
-        if image.is_file():
+        # Process only image files
+        if image.is_file() and image.suffix.lower() in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp']:
             current_time = time.time()
-            print(f"Processing {image} ({i} of {total_files})")
+            print(f"Processing {image} ({processed_files +1} of {total_files})")
             
             # Remove timestamps older than 61 seconds from the deque (+1 to be on the safe side)
             while timestamps and current_time - timestamps[0] > 61:
@@ -332,7 +338,7 @@ def main():
     source_folder = './images'
     target_folder = './images/named_images'
     # Processing maximum of 10 images per minute as 2 calls and 20 max per minute, 9 to be safe
-    # But if not using the description text, can process 18 images per minute
+    # But if not using the description text, can process 18 images per minute, or 17 to be on the safe side
     process_images(source_folder, target_folder, 17)
 
 if __name__ == "__main__":
