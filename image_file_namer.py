@@ -50,10 +50,27 @@ def sanitize_filename(filename: str) -> str:
     customization of the `illegal_chars` and `words_to_remove` lists may be necessary to meet specific
     requirements.
     """
-    illegal_chars = '<>:,.•=-"/\\|?*βß<>%&\{\}[]()$!#@;^`~\'’”“„‚‘´¨»«'
+    illegal_chars = '<>:,.•=-"/\\|?*βß<>%&\{\}[]()$!#@;^`~\'’”“„‚‘´¨»«€£¥—_§±'
     
     for char in illegal_chars:
         filename = filename.replace(char, '')
+
+    # Remove double words with different capitalizations
+    words_seen = set()
+    words_in_filename = filename.split()
+    new_filename_words = []
+
+    for word in words_in_filename:
+        word_lower = word.lower()
+        word_singular = word_lower.rstrip('s')  # Simplified checking for plural/singular, "assuming" only simple plurals ending in 's'
+        if word_lower not in words_seen and word_singular not in words_seen:
+            new_filename_words.append(word)
+            # Add both the actual word and its lowercase form to the set
+            words_seen.add(word_lower)
+            words_seen.add(word_singular)
+
+    # Rebuild the filename from the filtered list of words
+    filename = ' '.join(new_filename_words)
 
     # Remove specified words
     words_to_remove = list(load_words_from_file(words_to_remove_file))
@@ -62,7 +79,10 @@ def sanitize_filename(filename: str) -> str:
         regex_pattern = r'\s*\b' + re.escape(word) + r'\b\s*'
         filename = re.sub(regex_pattern, ' ', filename, flags=re.IGNORECASE)  # Replace with a single space to avoid concatenation of words
 
-    return filename
+    # Replace multiple spaces with a single space
+    filename = re.sub(' +', ' ', filename)
+
+    return filename.strip()
 
 def load_words_from_file(file_path):
     input_file_path = file_path
@@ -91,8 +111,10 @@ def fix_common_ocr_mistakes(text:str):
     text = text.replace('Trurnp', 'Trump')
     text = text.replace('exarnple', 'example')
     text = text.replace('ernptied', 'emptied')
+    text = text.replace('darnage', 'damage')
+    text = text.replace('Jirn', 'Jim')
 
-    # Use regex to remove string of numbers followed by either K or M (for number of likes or views)
+    # Remove string of numbers followed by either K or M (for number of likes or views)
     text = re.sub(r'\d+[KM]', '', text)
 
     # Remove single characters that are not part of a word
@@ -100,6 +122,9 @@ def fix_common_ocr_mistakes(text:str):
 
     # Remove more than 1 consecutive space
     text = re.sub(r'\s{2,}', ' ', text).strip()
+
+    # Remove string beginning with https or http
+    text = re.sub(r'https?://\S+', '', text)
      
 
     return text
@@ -141,10 +166,13 @@ def get_words_of_interest(text):
 def check_time_in_string(text):
     # Use regular expression to search for the pattern "after [number] second" to know for how long to wait
     match = re.search(r"after (\d+) second", text)
+    match_days = re.search(r"after (\d+) day", text)
     
     if match:
         seconds = int(match.group(1))
         return seconds
+    elif match_days:
+        return -1
     else:
         # If the pattern is not found, return None
         return None
@@ -201,7 +229,10 @@ def generate_new_filename(image_path):
         except Exception as e:
             print(f"OCR failed: {e}")
             seconds = check_time_in_string(str(e))
-            if seconds is not None:
+            
+            if seconds == -1: # Overused quota, wait for at least a day
+                exit()
+            elif seconds is not None:
                 print(f"\nHit limit. Waiting for {seconds} seconds before trying again...")
                 time.sleep(seconds)
                 with open(image_path, "rb") as image_stream:
@@ -210,9 +241,12 @@ def generate_new_filename(image_path):
                     except Exception as e:
                         print(f"OCR failed again: {e}")
                         # This needs to be adapted in case desciptive text or famous people recognition is used
-                        return found_dates if found_dates else "unnamed"
+                        return sanitize_filename(found_dates).strip() if found_dates else "unnamed"
+            if "outside the supported" in str(e):
+                print("Image type not supported")
+                return sanitize_filename(found_dates).strip() if found_dates else "unnamed"
                     
-        print("\nText funnen i bilden:")
+        print("\nText found in image:")
         for region in ocr_results.regions:
             for line in region.lines:
                 line_text = " ".join([word.text for word in line.words])
@@ -364,7 +398,7 @@ def process_images(source_folder, target_folder, rate_limit_per_minute=9):
 
 def main():
     # Specify your source and target folders. Could be the Screenshot folder directly if you're brave.
-    source_folder = './images'
+    source_folder = './images/to_name'
     target_folder = './images/named_images'
     # Processing maximum of 10 images per minute as 2 calls and 20 max per minute, 9 to be safe
     # But if not using the description text, can process 18 images per minute, or 17 to be on the safe side
