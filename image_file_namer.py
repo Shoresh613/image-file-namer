@@ -177,6 +177,19 @@ def check_time_in_string(text):
         # If the pattern is not found, return None
         return None
 
+def remove_gibberish(text):
+    # Regex pattern for potential OCR gibberish
+    pattern = r"\b(?!\w*'[a-z])([qxzj]{2,}|[bcdfghjklmnpqrstvwxyz]{5,}|[aeiouy]{3,})\b"
+
+
+    # Finding matches
+    matches = re.findall(pattern, text)
+    print("Potential OCR gibberish detected:", matches)
+
+    # Removing gibberish
+    cleaned_text = re.sub(pattern, '', text)
+    return cleaned_text
+
 def generate_new_filename(image_path):
     """
     Generates a new filename for an image based on its content, recognized text, and descriptive elements.
@@ -302,7 +315,7 @@ def generate_new_filename(image_path):
 
     new_file_name = descr_kw + ocr_kw if ocr_kw != "" else descr_kw.strip()
 
-    new_file_name = sanitize_filename(fix_common_ocr_mistakes(new_file_name))
+    new_file_name = sanitize_filename(fix_common_ocr_mistakes(remove_gibberish(new_file_name)))
     new_file_name = " ".join((set(new_file_name.split())))
 
     if found_dates:
