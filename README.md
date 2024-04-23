@@ -70,3 +70,6 @@ Required step to ensure personal names are kept as keywords:
 `name_extractor.py`: Extracts personal names from a body of text.
 
 `words_to_set.py`: Reads a text file consisting of words you want to keep in the description, filters out words with numbers in them, removes duplicates, sorts the words and outputs a file with every words on a line of its own. Can be used to generate the word list files used by the main script, e.g. `words_to_include.txt` etc.
+
+### Changelog
+v. 0.1.15: Version numbering introduced.
