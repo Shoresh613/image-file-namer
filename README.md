@@ -25,10 +25,6 @@ Generated filename: `"20230422 United nypost America biden overthrow prompted Hu
 
 The date is generated from the filename. Edit the script to suit your preferred date format.
 
-### Extra scripts to preprocess images
-* `resize_images.py` Resizes images in `to_resize` folder, saves in `resized` folder.
-* `scale_hor_50.py` Resizes images horizontally in `scale_horizontally` folder, saves in `scaled_horizontally` folder. There are some presets that can be extended based on your use cases.
-
 ### Folders
 All relative to the git directory:
 
@@ -63,10 +59,14 @@ Required step to ensure personal names are kept as keywords:
 
 ### Extra related scripts developed in the process
 
+#### Image preprocessing
+`resize_images.py`: Resizes images 50% and stores as jpeg (70% quality), suitable for downscaling screenshots for storage.
+
+`scale_hor_50.py`: Resizes images horizontally in `scale_horizontally` folder, saves in `scaled_horizontally` folder. There are some presets that can be extended based on your use cases.
+
+#### NLP and file preparations
 `clean_file_name.py`: Removes illegal charachters from the filename, and shortens it to enable transfer to Android (135 char limit? At least for me when transferring from Windows).
 
 `name_extractor.py`: Extracts personal names from a body of text.
-
-`resize_images.py`: Resizes images 50% and stores as jpeg (70% quality), suitable for downscaling screenshots for storage.
 
 `words_to_set.py`: Reads a text file consisting of words you want to keep in the description, filters out words with numbers in them, removes duplicates, sorts the words and outputs a file with every words on a line of its own. Can be used to generate the word list files used by the main script, e.g. `words_to_include.txt` etc.
