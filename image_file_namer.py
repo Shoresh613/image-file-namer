@@ -114,8 +114,8 @@ def fix_common_ocr_mistakes(text:str):
     text = text.replace('darnage', 'damage')
     text = text.replace('Jirn', 'Jim')
 
-    # Remove string of numbers followed by either K or M (for number of likes or views)
-    text = re.sub(r'\d+[KM]', '', text)
+    # Remove string of numbers followed by either K or M (for number of likes, views or hours ago)
+    text = re.sub(r'\d+[KMh]', '', text)
 
     # Remove single characters that are not part of a word
     text = re.sub(r'\b\w\b', '', text)
@@ -164,7 +164,7 @@ def get_words_of_interest(text):
     return " ".join(words) + " "
 
 def check_time_in_string(text):
-    # Use regular expression to search for the pattern "after [number] second" to know for how long to wait
+    # search for the pattern "after [number] second" to know for how long to wait
     match = re.search(r"after (\d+) second", text)
     match_days = re.search(r"after (\d+) day", text)
     
@@ -179,7 +179,8 @@ def check_time_in_string(text):
 
 def remove_gibberish(text):
     # Regex pattern for potential OCR gibberish
-    pattern = r"\b(?!\w*'[a-z])([qxzj]{2,}|[bcdfghjklmnpqrstvwxyz]{5,}|[aeiouy]{3,})\b"
+    # pattern = r"\b(?!\w*'[a-z])([qxzj]{2,}|[bcdfghjklmnpqrstvwxyz]{5,}|[aeiouy]{3,})\b"
+    pattern = r"\b(?!\w*'[a-z])(([qxzj]{2,})|([bcdfghjklmnpqrstvwxyz]*[aeiouy]{3,}[bcdfghjklmnpqrstvwxyz]*)|([aeiouy]*[bcdfghjklmnpqrstvwxyz]{5,}[aeiouy]*))\b"
 
 
     # Finding matches
