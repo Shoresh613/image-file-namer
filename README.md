@@ -50,7 +50,7 @@ All relative to the git directory:
 | `AZURE_IMAGE_KEY`      | Authentication key for accessing the Azure Image service |
 
 ###
-Required step to ensure personal names are kept as keywords:
+Required step to ensure filter out keywords in English (change to your use case, also in the code):
 `python -m spacy download en_core_web_sm`
 
 ### Still to do
@@ -64,6 +64,8 @@ Required step to ensure personal names are kept as keywords:
 
 `scale_hor_50.py`: Resizes images horizontally in `scale_horizontally` folder, saves in `scaled_horizontally` folder. There are some presets that can be extended based on your use cases.
 
+`crop.py`: Crops images based on presets defined in `cropping_modes.json`, see `sample_cropping_modes.json` for example and adapt to your use case. 
+
 #### NLP and file preparations
 `clean_file_name.py`: Removes illegal charachters from the filename, and shortens it to enable transfer to Android (135 char limit? At least for me when transferring from Windows).
 
@@ -72,4 +74,4 @@ Required step to ensure personal names are kept as keywords:
 `words_to_set.py`: Reads a text file consisting of words you want to keep in the description, filters out words with numbers in them, removes duplicates, sorts the words and outputs a file with every words on a line of its own. Can be used to generate the word list files used by the main script, e.g. `words_to_include.txt` etc.
 
 ### Changelog
-v. 0.1.15: Version numbering introduced.
+v. 0.1.16: Version numbering introduced.

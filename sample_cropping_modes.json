@@ -1,0 +1,37 @@
+{  "Demo1": {
+    "left": 60,
+    "upper": 1212,
+    "right": "width - 60",
+    "lower": "height - 1296"
+  },
+  "Demo2": {
+    "left": 30,
+    "upper": 606,
+    "right": "width - 30",
+    "lower": "height - 648"
+  },
+  "Demo3": {
+    "left": 208,
+    "upper": 104,
+    "right": "width - 208",
+    "lower": "height - 254"
+  },
+  "Demo4": {
+    "left": 440,
+    "upper": 126,
+    "right": "width - 426",
+    "lower": "height - 260"
+  },
+  "video_portrait": {
+    "left": 4,
+    "upper": 1158,
+    "right": "width - 4",
+    "lower": "height - 1158"
+  },
+  "PDF_portrait": {
+    "left": 4,
+    "upper": 333,
+    "right": "width - 4",
+    "lower": "height - 526"
+  }
+}
