@@ -18,12 +18,6 @@ names_to_include_file = './wordlists/names_to_include.txt' # Create file to use 
 words_to_include_file = './wordlists/words_to_include.txt' # Create file to use the file, one word on each line
 words_to_remove_file = './wordlists/words_to_remove.txt' # Create file to use the file, one word on each line
 
-# Check if the variables were found
-if subscription_key and endpoint:
-    print("Found the environment variables.")
-else:
-    print("Environment variables not found.")
-
 def sanitize_filename(filename: str) -> str:
     """
     Sanitizes a filename by removing illegal characters and specific words.
@@ -417,6 +411,15 @@ def main():
     # Processing maximum of 10 images per minute as 2 calls and 20 max per minute, 9 to be safe
     # But if not using the description text, can process 18 images per minute, or 17 to be on the safe side
     # Seems it doesn't only count per minute, so finetuning to quarter of a minute instead, to avoid Exceptions.
+
+    # Check if the variables were found
+    if subscription_key and endpoint:
+        print("Found the environment variables.")
+    else:
+        print("Azure Environment variables not found.")
+        return 1
+        
+
     process_images(source_folder, target_folder, 17)
 
 if __name__ == "__main__":
