@@ -25,13 +25,27 @@ Generated filename: `"20230422 United nypost America biden overthrow prompted Hu
 
 The date is generated from the filename. Edit the script to suit your preferred date format.
 
+### Extra scripts to preprocess images
+* `resize_images.py` Resizes images in `to_resize` folder, saves in `resized` folder.
+* `scale_hor_50.py` Resizes images horizontally in `scale_horizontally` folder, saves in `scaled_horizontally` folder. There are some presets that can be extended based on your use cases.
+
 ### Folders
 All relative to the git directory:
 
-| Folder Path             | Description                            |
-|-------------------------|----------------------------------------|
-| `./images/`             | Place images here to automatically get them renamed |
-| `./images/named_images` | Named images are stored here           |
+Sure, let's extend the markdown table to include descriptions for all the folders shown in the screenshot.
+
+### Folders
+All relative to the git directory:
+
+| Folder Path                      | Description                                                 |
+|----------------------------------|-------------------------------------------------------------|
+| `./images/named_images`          | Named images are stored here                                |
+| `./images/cropped`               | Contains images that have been cropped                      |
+| `./images/resized`               | Contains images that have been resized after processing     |
+| `./images/scale_horizontally`    | Images to be scaled in the horizontal dimension             |
+| `./images/scaled_horizontally`   | Contains horizontally scaled images after processing        |
+| `./images/to_crop`               | Images to be cropped are placed here                        |
+| `./images/to_name`               | Images that are ready to be renamed are stored here         |
 
 ### Environment variables
 | Variable               | Description                                        |
