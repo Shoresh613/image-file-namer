@@ -8,7 +8,7 @@ Naturally, there is a cost involved for using the API, unless you happen to be a
 
 The script makes sure it doesn't exceed the limit of 20 API calls per minute (1-3 calls for every image, default is 1 call, which leads to a processing speed of 4-18 images per minute to be on the safe side). It does not keep track of exceeding 5000 per month, but if more calls are made, they will simply be refused unless you pay for more.
 
-There are some tweaks to be made to get the best results for your situation, which include creating the following files, where words to keep or remove from the filenames are specified:
+There are some tweaks to be made to get the best results for your situation, which include creating the following files in a `wordlist` folder in the root of this directory, where words to keep or remove from the filenames are specified:
 
 * `names_to_include.txt`: Names to always include in the filename if detected (case sensitive) 
 * `words_to_include.txt`: Words to always include in the filename if detected (case insensitive)
