@@ -8,7 +8,28 @@ from collections import deque
 import yake
 import spacy
 import re
+import subprocess
+import sys
 
+def download_spacy_model(model_name):
+    try:
+        # Try to load the spaCy model to check if it's already installed
+        import spacy
+        spacy.load(model_name)
+        print(f"Model {model_name} installed.")
+    except OSError:
+        # If model is not installed, ask the user for permission to download
+        response = input(f"Model {model_name} not found. Do you want to download it? (yes/no): ")
+        if response.lower() == 'yes':
+            try:
+                # Run the download command
+                subprocess.run([sys.executable, '-m', 'spacy', 'download', model_name], check=True)
+                print(f"Model {model_name} downloaded successfully.")
+            except subprocess.CalledProcessError as e:
+                print(f"Failed to download {model_name}: {str(e)}")
+        else:
+            print("Download cancelled.")
+            return 1
 
 # Access environment variables for the Azure Cognitive Services subscription key and endpoint
 # Note: These environment variables should be set before running the script
@@ -418,7 +439,12 @@ def main():
     else:
         print("Azure Environment variables not found.")
         return 1
-        
+    
+    # Check if spacy language model is downloaded, ask to download if not
+    # Replace 'en_core_web_sm' with your specific spaCy model name
+    code = download_spacy_model('en_core_web_sm')
+    if code == -1:
+        print("Please install language model for spaCy. Exiting.")
 
     process_images(source_folder, target_folder, 17)
 
