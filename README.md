@@ -51,7 +51,8 @@ All relative to the git directory:
 
 ###
 Required step to ensure filter out keywords in English (change to your use case, also in the code):
-`python -m spacy download en_core_web_sm`
+
+```python -m spacy download en_core_web_sm```
 
 ### Still to do
 * Improved understanding of the images would be nice. But that would mean training a model.
