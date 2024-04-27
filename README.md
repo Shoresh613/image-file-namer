@@ -68,7 +68,7 @@ Required step to ensure filter out keywords in English (change to your use case,
 `crop.py`: Crops images based on presets defined in `cropping_modes.json`, see `sample_cropping_modes.json` for example and adapt to your use case. 
 
 #### NLP and file preparations
-`clean_file_name.py`: Removes illegal charachters from the filename, and shortens it to enable transfer to Android (135 char limit? At least for me when transferring from Windows).
+`clean_file_name.py`: Changes from removing illegal charachters from the filename, and shortening it to enable transfer to Android (140 char limit), to just removing the words specified in the `words_to_remove.txt` list.
 
 `name_extractor.py`: Extracts personal names from a body of text.
 
