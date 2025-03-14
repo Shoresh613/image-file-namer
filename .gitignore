@@ -176,3 +176,6 @@ MY_SECRET_README.md
 tmp.py
 crop.py
 cropping_modes.json
+facial_recognition_model.pth
+name_mapping.json
+wordlists/non_personal_names_to_include.txt

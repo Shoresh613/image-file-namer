@@ -36,6 +36,7 @@ def download_spacy_model(model_name):
 subscription_key = os.getenv('AZURE_IMAGE_KEY')
 endpoint = os.getenv('AZURE_IMAGE_ENDPOINT')
 names_to_include_file = './wordlists/names_to_include.txt' # Create file to use the file, one word on each line
+non_personal_names_to_include = './wordlists/non_personal_names_to_include.txt' # Create file to use the file, one word on each line
 words_to_include_file = './wordlists/words_to_include.txt' # Create file to use the file, one word on each line
 words_to_remove_file = './wordlists/words_to_remove.txt' # Create file to use the file, one word on each line
 
@@ -156,7 +157,7 @@ def get_words_of_interest(text):
     words = [ent.text for ent in doc.ents if ent.label_ in categories]
     
     # People or words we want to include if present
-    names = list(load_words_from_file(names_to_include_file))
+    names = list(load_words_from_file(names_to_include_file)) + list(load_words_from_file(non_personal_names_to_include))
     
     # Add the names to the words list if they are present in the text
     for name in names:
