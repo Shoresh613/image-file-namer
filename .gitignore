@@ -174,7 +174,6 @@ wordlists/names_to_include.txt
 wordlists/words_to_include.txt
 MY_SECRET_README.md
 tmp.py
-crop.py
 cropping_modes.json
 facial_recognition_model.pth
 name_mapping.json

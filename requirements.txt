@@ -1,5 +1,6 @@
-azure-cognitiveservices-vision-computervision
-msrest
+# azure-cognitiveservices-vision-computervision
+# msrest
 langdetect
-yake
+# yake
 spacy
+ollama

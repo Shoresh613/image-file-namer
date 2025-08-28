@@ -1,15 +1,32 @@
-from azure.cognitiveservices.vision.computervision import ComputerVisionClient
-from msrest.authentication import CognitiveServicesCredentials
+# from azure.cognitiveservices.vision.computervision import ComputerVisionClient
+# from msrest.authentication import CognitiveServicesCredentials
 from langdetect import detect
 import os
 import time
 from pathlib import Path
 from collections import deque
-import yake
+# import yake
 import spacy
 import re
 import subprocess
 import sys
+import random 
+from tqdm import tqdm
+import ollama
+from docling.document_converter import DocumentConverter
+import torch
+doc_converter = DocumentConverter()
+
+def clean_up_gpu_memory():
+    """
+    Frees up GPU memory by clearing PyTorch's cache and performing garbage collection.
+    """
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
+        print("GPU memory cleaned up.")
+    else:
+        print("No GPU available to clean up.")
 
 def download_spacy_model(model_name):
     try:
@@ -207,7 +224,7 @@ def remove_gibberish(text):
     cleaned_text = re.sub(pattern, '', text)
     return cleaned_text
 
-def generate_new_filename(image_path):
+def generate_new_filename(image_path, local_llm=True):
     """
     Generates a new filename for an image based on its content, recognized text, and descriptive elements.
 
@@ -229,7 +246,8 @@ def generate_new_filename(image_path):
     the function might generate a filename like "sunset mountains enjoy view".
     """
 
-    client = ComputerVisionClient(endpoint, CognitiveServicesCredentials(subscription_key))
+    if not local_llm:
+        client = ComputerVisionClient(endpoint, CognitiveServicesCredentials(subscription_key))
     descr_text=""
 
     # Description text doesn't produce much useful information in my use case, skipping and can double processing speed and images per month
@@ -253,90 +271,135 @@ def generate_new_filename(image_path):
     # OCR
     ocr_text = ""
 
-    with open(image_path, "rb") as image_stream:
-        try:
-            ocr_results = client.recognize_printed_text_in_stream(image_stream)
-        except Exception as e:
-            print(f"OCR failed: {e}")
-            seconds = check_time_in_string(str(e))
-            
-            if seconds == -1: # Overused quota, wait for at least a day
-                exit()
-            elif seconds is not None:
-                print(f"\nHit limit. Waiting for {seconds} seconds before trying again...")
-                time.sleep(seconds)
-                with open(image_path, "rb") as image_stream:
-                    try:
-                        ocr_results = client.recognize_printed_text_in_stream(image_stream)
-                    except Exception as e:
-                        print(f"OCR failed again: {e}")
-                        # This needs to be adapted in case desciptive text or famous people recognition is used
-                        return sanitize_filename(found_dates).strip() if found_dates else "unnamed"
-            if "outside the supported" in str(e):
-                print("Image type not supported")
-                return sanitize_filename(found_dates).strip() if found_dates else "unnamed"
-                    
-        print("\nText found in image:")
-        for region in ocr_results.regions:
-            for line in region.lines:
-                line_text = " ".join([word.text for word in line.words])
-                print(line_text)
-                ocr_text += line_text + " "
-    try:
-        # Detect the language
-        ocr_lang = detect(ocr_text)
-        print(f"The detected language of the OCR text is: {ocr_lang}")
-    except Exception as e:
-        print(f"Language detection failed: {e}")
-        ocr_lang = "en"
+    if not local_llm:
+        with open(image_path, "rb") as image_stream:
+            try:
+                ocr_results = client.recognize_printed_text_in_stream(image_stream)
+            except Exception as e:
+                print(f"OCR failed: {e}")
+                seconds = check_time_in_string(str(e))
+                
+                if seconds == -1: # Overused quota, wait for at least a day
+                    exit()
+                elif seconds is not None:
+                    print(f"\nHit limit. Waiting for {seconds} seconds before trying again...")
+                    time.sleep(seconds)
+                    with open(image_path, "rb") as image_stream:
+                        try:
+                            ocr_results = client.recognize_printed_text_in_stream(image_stream)
+                        except Exception as e:
+                            print(f"OCR failed again: {e}")
+                            # This needs to be adapted in case desciptive text or famous people recognition is used
+                            return sanitize_filename(found_dates).strip() if found_dates else "unnamed"
+                if "outside the supported" in str(e):
+                    print("Image type not supported")
+                    return sanitize_filename(found_dates).strip() if found_dates else "unnamed"
+                        
+            print("\nText found in image:")
+            for region in ocr_results.regions:
+                for line in region.lines:
+                    line_text = " ".join([word.text for word in line.words])
+                    print(line_text)
+                    ocr_text += line_text + " "
+    else:
+        # response = ollama.chat(
+        #     model="gemma3",
+        #     messages=[
+        #         {"role": "user", "content": "Write all text found in the image in natural reading order but in one line, no introduction, no emojis. If text is too small to read efficiently just skip it.", "images": [image_path]}
+        #     ],
+        # )
 
-    try:
-        # Detect the language
-        desc_lang = detect(descr_text)
-        print(f"The detected language of the descritive text is: {desc_lang}")
-    except Exception as e:
-        print(f"Language detection failed: {e}")
-        desc_lang = "en"
+        # print(f"OCR text found in image: {response['message']['content']}\n")
+        # ocr_text = response["message"]['content']
 
-    max_ngram_size = 2
-    deduplication_threshold = 0.4
-    numOfKeywords = 15
+        print(f"Running Docling OCR on {image_path}...")
+        result = doc_converter.convert(str(image_path))
+        raw_md = result.document.export_to_markdown()
+        ocr_text = re.sub(r'^#+\s*', '', raw_md, flags=re.MULTILINE).strip()
+        print(f"OCR text via Docling:\n{ocr_text}\n")
 
-    # Extract keywords from the OCR text
-    language = "sv" if ocr_lang == "sv" else "en"
+        response = ollama.chat(
+            model="gemma3:4b-it-qat",
+            messages=[
+                {"role": "user", "content": "Output keywords for this image in one line for the purpose of giving the image file a name for easy search. Just a single space between keywords. No emojis.", "images": [image_path]}
+            ],
+        )
+
+
+        print(f"Description of Image: {response['message']['content']}\n")
+        descr_text = response["message"]['content']
+
+    # try:
+    #     # Detect the language
+    #     ocr_lang = detect(ocr_text)
+    #     print(f"The detected language of the OCR text is: {ocr_lang}")
+    # except Exception as e:
+    #     print(f"Language detection failed: {e}")
+    #     ocr_lang = "en"
+
+    # try:
+    #     # Detect the language
+    #     desc_lang = detect(descr_text)
+    #     print(f"The detected language of the descritive text is: {desc_lang}")
+    # except Exception as e:
+    #     print(f"Language detection failed: {e}")
+    #     desc_lang = "en"
+
+    # max_ngram_size = 2
+    # deduplication_threshold = 0.4
+    # numOfKeywords = 15
+
+    # # Extract keywords from the OCR text
+    # language = "sv" if ocr_lang == "sv" else "en"
         
-    kw_extractor = yake.KeywordExtractor(lan=language, n=max_ngram_size, dedupLim=deduplication_threshold, top=numOfKeywords, features=None)
-    keywords = kw_extractor.extract_keywords(sanitize_filename(ocr_text))
+    # kw_extractor = yake.KeywordExtractor(lan=language, n=max_ngram_size, dedupLim=deduplication_threshold, top=numOfKeywords, features=None)
+    # keywords = kw_extractor.extract_keywords(sanitize_filename(ocr_text))
 
-    ocr_kw = ""
-    for kw in keywords:
-        ocr_kw += kw[0] + " "
+    # ocr_kw = ""
+    # for kw in keywords:
+    #     ocr_kw += kw[0] + " "
 
-    print(f"OCR keywords: {ocr_kw}")
+        response = ollama.chat(
+            model="gemma3:4b-it-qat",
+            messages=[
+                {"role": "user", "content": "Out of the following words, pick 15 keywords that you think are most relevant for naming an image file. If you can't find 15, just pick the ones you think are most relevant. No other text in the reply, no motivations, just the keywords one after another in a single line with a single space between: " + ocr_text + " " + descr_text}
+            ],
+        )
+    ocr_kw = response["message"]['content']
+    print(f"OCR and description keywords: {ocr_kw}\n")
     
     # Add back any words of people, places, organizations etc to the OCR keywords
     words = get_words_of_interest(ocr_text)
     print(f"Words of interest: {words}")
     ocr_kw = words + ocr_kw 
 
-    # Extract keywords from the description text
-    language = "sv" if ocr_lang == "sv" else "en"
-    kw_extractor = yake.KeywordExtractor(lan=language, n=max_ngram_size, dedupLim=deduplication_threshold, top=numOfKeywords, features=None)
-    keywords = kw_extractor.extract_keywords(descr_text)
+    # # Extract keywords from the description text
+    # language = "sv" if ocr_lang == "sv" else "en"
+    # kw_extractor = yake.KeywordExtractor(lan=language, n=max_ngram_size, dedupLim=deduplication_threshold, top=numOfKeywords, features=None)
+    # keywords = kw_extractor.extract_keywords(descr_text)
 
-    descr_kw = ""
-    for kw in keywords:
-        descr_kw += kw[0] + " "
+    # descr_kw = ""
+    # for kw in keywords:
+    #     descr_kw += kw[0] + " "
 
-    print(f"Description keywords: {descr_kw}")
+    # print(f"Description keywords: {descr_kw}")
 
-    new_file_name = descr_kw + ocr_kw if ocr_kw != "" else descr_kw.strip()
+    new_file_name = ocr_kw if ocr_kw != "" else f"unnamed{random.randint(0, 1000)}"
+    # new_file_name = descr_kw + ocr_kw if ocr_kw != "" else descr_kw.strip()
 
     new_file_name = sanitize_filename(fix_common_ocr_mistakes(remove_gibberish(new_file_name)))
     new_file_name = " ".join((set(new_file_name.split())))
 
     if found_dates:
         new_file_name = sanitize_filename(found_dates).strip() + " " + new_file_name.strip()
+
+    response = ollama.chat(
+        model="gemma3:4b-it-qat",
+        messages=[
+            {"role": "user", "content": "If there are repeats of words or names in this text, only keep one of those words or names. Examples: If 'FBI/DOJ fbi DOJ' in the string, keep only 'FBI DOJ', if 'WhiteHouse White House' keep only 'White House', if 'vaccine vaccin' keep only 'vaccine', if 'DaveWeldon Dave Weldon' keep only 'Dave Weldon'. No other text in the reply, no motivations, just the keywords one after another in a single line with a single space between: " + new_file_name}
+        ],
+    )
+    new_file_name = response["message"]['content']
     # truncate the text to 135 characters for filename compatibility (Android file transfer?)
     new_file_name = new_file_name[:135].strip()
 
@@ -385,7 +448,7 @@ def process_images(source_folder, target_folder, rate_limit_per_minute=9):
     # Calculate total number of files once
     total_files = count_image_files(source_folder)
     processed_files = 0
-    for i, image in enumerate(Path(source_folder).glob('*'), start=0):
+    for image in tqdm(Path(source_folder).glob('*'), total=total_files, desc="Processing images", unit="image"):
         # Process only image files
         if image.is_file() and image.suffix.lower() in ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.tiff', '.webp']:
             current_time = time.time()
@@ -435,11 +498,11 @@ def main():
     # Seems it doesn't only count per minute, so finetuning to quarter of a minute instead, to avoid Exceptions.
 
     # Check if the variables were found
-    if subscription_key and endpoint:
-        print("Found the environment variables.")
-    else:
-        print("Azure Environment variables not found.")
-        return 1
+    # if subscription_key and endpoint:
+    #     print("Found the environment variables.")
+    # else:
+    #     print("Azure Environment variables not found.")
+    #     return 1
     
     # Check if spacy language model is downloaded, ask to download if not
     # Replace 'en_core_web_sm' with your specific spaCy model name
@@ -447,7 +510,8 @@ def main():
     if code == -1:
         print("Please install language model for spaCy. Exiting.")
 
-    process_images(source_folder, target_folder, 17)
+    clean_up_gpu_memory()
+    process_images(source_folder, target_folder, 100)
 
 if __name__ == "__main__":
     main()
