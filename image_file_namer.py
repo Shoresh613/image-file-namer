@@ -69,6 +69,142 @@ words_to_include_file = "./wordlists/words_to_include.txt"  # Create file to use
 words_to_remove_file = "./wordlists/words_to_remove.txt"  # Create file to use the file, one word on each line
 
 
+def build_optimized_filename(words_text: str, date_prefix: str = "", max_length: int = 135) -> str:
+    """
+    Build an optimized filename by adding words incrementally while checking for duplicates,
+    wordlist filters, and length constraints. This maximizes the number of unique words that can fit.
+    
+    Parameters:
+    - words_text (str): The text containing all potential words
+    - date_prefix (str): Optional date prefix to add at the beginning  
+    - max_length (int): Maximum length for the final filename
+    
+    Returns:
+    - str: Optimized filename with maximum unique words within length constraint
+    """
+    if not words_text or not words_text.strip():
+        return date_prefix.strip() if date_prefix else ""
+    
+    # Load wordlists for filtering
+    words_to_remove = set()
+    words_to_include = set()
+    names_to_include = set()
+    non_personal_names = set()
+    
+    try:
+        words_to_remove_list = load_words_from_file(words_to_remove_file)
+        if words_to_remove_list:
+            words_to_remove = {word.lower() for word in words_to_remove_list if word}
+    except:
+        pass
+        
+    try:
+        words_to_include_list = load_words_from_file(words_to_include_file)
+        if words_to_include_list:
+            words_to_include = {word.lower() for word in words_to_include_list if word}
+    except:
+        pass
+        
+    try:
+        names_list = load_words_from_file(names_to_include_file)
+        if names_list:
+            names_to_include = {word.lower() for word in names_list if word}
+    except:
+        pass
+        
+    try:
+        non_personal_list = load_words_from_file(non_personal_names_to_include)
+        if non_personal_list:
+            non_personal_names = {word.lower() for word in non_personal_list if word}
+    except:
+        pass
+    
+    # Start with date prefix if provided
+    result_parts = [date_prefix] if date_prefix else []
+    current_length = len(date_prefix) + (1 if date_prefix else 0)  # +1 for space after date
+    
+    # Split words and prepare for processing
+    available_words = words_text.split()
+    seen_words = set()
+    
+    # Word variant mappings (same as in remove_duplicate_words)
+    word_variants = {
+        'vaccin': 'vaccine',
+        'vaccination': 'vaccine', 
+        'vaccinera': 'vaccine',
+        'vaccinerad': 'vaccine',
+        'ovaccinerade': 'vaccine',
+        'covid': 'covid',
+        'covid19': 'covid',
+        'coronavirus': 'covid',
+        'corona': 'covid',
+        'pandemic': 'pandemic',
+        'pandemi': 'pandemic',
+    }
+    
+    # If we have a date prefix, add its words to seen_words to avoid duplication
+    if date_prefix:
+        for word in date_prefix.split():
+            cleaned = re.sub(r'[^\w]', '', word.lower())
+            if cleaned:
+                base_word = word_variants.get(cleaned, cleaned)
+                singular_word = base_word.rstrip('s') if base_word.endswith('s') and len(base_word) > 1 else base_word
+                seen_words.add(singular_word)
+    
+    # Process each word
+    for word in available_words:
+        if not word:
+            continue
+            
+        # Calculate what the new length would be
+        word_length = len(word)
+        space_needed = 1 if result_parts else 0  # Space before word (if not first)
+        new_length = current_length + space_needed + word_length
+        
+        # Skip if it would exceed max length
+        if new_length > max_length:
+            continue
+        
+        # Clean the word for comparison
+        cleaned_word = re.sub(r'[^\w]', '', word.lower())
+        if not cleaned_word:
+            continue
+            
+        # Check wordlists - skip if word should be removed
+        if cleaned_word in words_to_remove:
+            continue
+            
+        # Check if word is in include lists (if they exist and are not empty)
+        # Words are kept if: they are in include lists OR no include lists exist OR word is not commonly filtered
+        should_include = True
+        has_include_lists = bool(words_to_include or names_to_include or non_personal_names)
+        
+        if has_include_lists:
+            # Include if the word is specifically in one of the include lists
+            # OR if the word is longer than 3 characters (likely meaningful content)
+            # This allows both curated important words and substantial content words
+            should_include = (cleaned_word in words_to_include or 
+                            cleaned_word in names_to_include or 
+                            cleaned_word in non_personal_names or
+                            len(cleaned_word) > 3)
+        
+        if not should_include:
+            continue
+            
+        # Check for duplicates
+        base_word = word_variants.get(cleaned_word, cleaned_word)
+        singular_word = base_word.rstrip('s') if base_word.endswith('s') and len(base_word) > 1 else base_word
+        normalized_word = singular_word
+        
+        # Only add if we haven't seen this word before
+        if normalized_word not in seen_words:
+            result_parts.append(word)
+            seen_words.add(normalized_word)
+            current_length = new_length
+    
+    return ' '.join(result_parts)
+
+
 def remove_duplicate_words(text: str) -> str:
     """
     Remove duplicate words from text, handling case variations and similar words.
@@ -610,19 +746,31 @@ def generate_new_filename(image_path, local_llm=True):
     new_file_name = ocr_kw if ocr_kw != "" else f"unnamed{random.randint(0, 1000)}"
     # new_file_name = descr_kw + ocr_kw if ocr_kw != "" else descr_kw.strip()
 
-    new_file_name = sanitize_filename(
-        fix_common_ocr_mistakes(remove_gibberish(new_file_name))
+    # Clean up the text first (only character cleaning, not wordlist filtering)
+    processed_text = fix_common_ocr_mistakes(remove_gibberish(new_file_name))
+    
+    # Remove illegal characters but don't apply wordlist filtering yet
+    illegal_chars = "<>:,.•=-\"/\\|?*βß<>%&\\{\\}[]()$!#@;^`~''""„‚'´¨»«€£¥—_§±"
+    for char in illegal_chars:
+        processed_text = processed_text.replace(char, "")
+    
+    # Replace multiple spaces with single space
+    processed_text = re.sub(" +", " ", processed_text).strip()
+    
+    # Build optimized filename with incremental duplicate checking, wordlist filtering, and length management
+    new_file_name = build_optimized_filename(
+        words_text=processed_text,
+        date_prefix=found_dates if found_dates else "",
+        max_length=135
     )
-    # Remove duplicate words more effectively using our custom function
-    new_file_name = remove_duplicate_words(new_file_name)
-
-    if found_dates:
-        new_file_name = found_dates + " " + new_file_name.strip()
-
-    # Final cleanup: remove any remaining duplicate words that might have been introduced
-    new_file_name = remove_duplicate_words(new_file_name)
-    # truncate the text to 135 characters for filename compatibility (Android file transfer?)
-    new_file_name = new_file_name[:135].strip()
+    
+    # Fallback in case we end up with just the date or empty string
+    if not new_file_name.strip() or (found_dates and new_file_name.strip() == found_dates.strip()):
+        fallback_name = f"unnamed{random.randint(0, 1000)}"
+        if found_dates:
+            new_file_name = found_dates + " " + fallback_name
+        else:
+            new_file_name = fallback_name
 
     return new_file_name
 
