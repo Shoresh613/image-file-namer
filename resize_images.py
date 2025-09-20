@@ -24,6 +24,8 @@ def resize_image(input_path, output_path):
             new_size = (int(img.size[0] * scaling_factor), int(img.size[1] * scaling_factor))
             resized_img = img.resize(new_size, Image.Resampling.LANCZOS)
             
+            if resized_img.mode == 'RGBA':
+                resized_img = resized_img.convert('RGB')
             resized_img.save(output_path, 'JPEG', quality=70)
             print(f"Resized {input_path} and saved to {output_path}")
 
