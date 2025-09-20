@@ -69,6 +69,72 @@ words_to_include_file = "./wordlists/words_to_include.txt"  # Create file to use
 words_to_remove_file = "./wordlists/words_to_remove.txt"  # Create file to use the file, one word on each line
 
 
+def remove_duplicate_words(text: str) -> str:
+    """
+    Remove duplicate words from text, handling case variations and similar words.
+    
+    This function removes duplicate words while preserving the first occurrence of each word.
+    It handles:
+    - Case insensitive duplicates (e.g., "COVID" and "covid")
+    - Similar words like "vaccin" and "vaccine"
+    - Simple plurals (e.g., "vaccine" and "vaccines")
+    - Exact duplicates
+    
+    Parameters:
+    - text (str): The text from which to remove duplicate words
+    
+    Returns:
+    - str: Text with duplicate words removed
+    """
+    if not text or not text.strip():
+        return text
+    
+    words = text.split()
+    seen_words = set()
+    result_words = []
+    
+    # Define word similarity mappings for common variations
+    word_variants = {
+        'vaccin': 'vaccine',
+        'vaccination': 'vaccine', 
+        'vaccinera': 'vaccine',
+        'vaccinerad': 'vaccine',
+        'ovaccinerade': 'vaccine',
+        'covid': 'covid',
+        'covid19': 'covid',
+        'coronavirus': 'covid',
+        'corona': 'covid',
+        'pandemic': 'pandemic',
+        'pandemi': 'pandemic',
+    }
+    
+    for word in words:
+        if not word:  # Skip empty strings
+            continue
+            
+        # Clean the word for comparison (remove punctuation, convert to lowercase)
+        cleaned_word = re.sub(r'[^\w]', '', word.lower())
+        
+        if not cleaned_word:  # Skip if word becomes empty after cleaning
+            continue
+        
+        # Check if this is a variant of a word we've already seen
+        base_word = word_variants.get(cleaned_word, cleaned_word)
+        
+        # Also check for simple plurals (words ending in 's')
+        singular_word = base_word.rstrip('s') if base_word.endswith('s') and len(base_word) > 1 else base_word
+        
+        # Normalize to the most common form for comparison
+        normalized_word = singular_word
+        
+        # Check if we've already seen this word (or its variants)
+        if normalized_word not in seen_words:
+            result_words.append(word)
+            seen_words.add(normalized_word)
+    
+    return ' '.join(result_words)
+
+
 def sanitize_filename(filename: str) -> str:
     """
     Sanitizes a filename by removing illegal characters and specific words.
@@ -100,24 +166,8 @@ def sanitize_filename(filename: str) -> str:
     for char in illegal_chars:
         filename = filename.replace(char, "")
 
-    # Remove double words with different capitalizations
-    words_seen = set()
-    words_in_filename = filename.split()
-    new_filename_words = []
-
-    for word in words_in_filename:
-        word_lower = word.lower()
-        word_singular = word_lower.rstrip(
-            "s"
-        )  # Simplified checking for plural/singular, "assuming" only simple plurals ending in 's'
-        if word_lower not in words_seen and word_singular not in words_seen:
-            new_filename_words.append(word)
-            # Add both the actual word and its lowercase form to the set
-            words_seen.add(word_lower)
-            words_seen.add(word_singular)
-
-    # Rebuild the filename from the filtered list of words
-    filename = " ".join(new_filename_words)
+    # Remove duplicate words with improved logic
+    filename = remove_duplicate_words(filename)
 
     # Remove specified words
     words_to_remove = list(load_words_from_file(words_to_remove_file))
@@ -563,22 +613,14 @@ def generate_new_filename(image_path, local_llm=True):
     new_file_name = sanitize_filename(
         fix_common_ocr_mistakes(remove_gibberish(new_file_name))
     )
-    new_file_name = " ".join((set(new_file_name.split())))
+    # Remove duplicate words more effectively using our custom function
+    new_file_name = remove_duplicate_words(new_file_name)
 
     if found_dates:
         new_file_name = found_dates + " " + new_file_name.strip()
 
-    response = ollama.chat(
-        model="gemma3:4b-it-qat",
-        messages=[
-            {
-                "role": "user",
-                "content": "If there are repeats of words or names in this text, only keep one of those words or names. Examples: If 'FBI/DOJ fbi DOJ' in the string, keep only 'FBI DOJ', if 'WhiteHouse White House' keep only 'White House', if 'vaccine vaccin' keep only 'vaccine', if 'DaveWeldon Dave Weldon' keep only 'Dave Weldon'. No other text in the reply, no motivations, just the keywords one after another in a single line with a single space between: "
-                + new_file_name,
-            }
-        ],
-    )
-    new_file_name = response["message"]["content"]
+    # Final cleanup: remove any remaining duplicate words that might have been introduced
+    new_file_name = remove_duplicate_words(new_file_name)
     # truncate the text to 135 characters for filename compatibility (Android file transfer?)
     new_file_name = new_file_name[:135].strip()
 
