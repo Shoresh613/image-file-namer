@@ -298,7 +298,7 @@ def sanitize_filename(filename: str) -> str:
     This function takes a filename as input and performs two main sanitization steps:
     1. Replaces any characters that are illegal in file systems with underscores. Illegal characters include
        common filesystem reserved characters as well as additional characters that could cause issues in
-       various environments, such as <, >, :, ", /, \, |, ?, *, and various Unicode punctuation characters.
+       various environments, such as <, >, :, ", /, \\, |, ?, *, and various Unicode punctuation characters.
     2. Removes a predefined list of words that are deemed unnecessary or undesirable in filenames. This
        includes common words and phrases in English, Swedish, and some technical terms related to web and
        application development. The removal process respects word boundaries, ensuring only whole words
@@ -681,7 +681,7 @@ def generate_new_filename(image_path):
     processed_text = fix_common_ocr_mistakes(remove_gibberish(new_file_name))
 
     # Remove illegal characters but don't apply wordlist filtering yet
-    illegal_chars = "<>:,.•=-\"/\\|?*βß<>%&\\{\\}[]()$!#@;^`~''" "„‚'´¨»«€£¥—_§±"
+    illegal_chars = r"<>:,.•=-\"/\\|?*βß<>%&{}[]()$!#@;^`~''" "„‚'´¨»«€£¥—_§±"
     for char in illegal_chars:
         processed_text = processed_text.replace(char, "")
 
