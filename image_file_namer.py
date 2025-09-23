@@ -1,6 +1,6 @@
+# Removed Azure-related imports - no longer needed
 # from azure.cognitiveservices.vision.computervision import ComputerVisionClient
 # from msrest.authentication import CognitiveServicesCredentials
-from langdetect import detect
 import os
 import time
 import datetime
@@ -59,216 +59,236 @@ def download_spacy_model(model_name):
             return 1
 
 
-# Access environment variables for the Azure Cognitive Services subscription key and endpoint
-# Note: These environment variables should be set before running the script
-subscription_key = os.getenv("AZURE_IMAGE_KEY")
-endpoint = os.getenv("AZURE_IMAGE_ENDPOINT")
+# Environment variables no longer needed - using local LLM only
+# Note: These environment variables were previously used for Azure Cognitive Services
+# subscription_key = os.getenv("AZURE_IMAGE_KEY")
+# endpoint = os.getenv("AZURE_IMAGE_ENDPOINT")
 names_to_include_file = "./wordlists/names_to_include.txt"  # Create file to use the file, one word on each line
 non_personal_names_to_include = "./wordlists/non_personal_names_to_include.txt"  # Create file to use the file, one word on each line
 words_to_include_file = "./wordlists/words_to_include.txt"  # Create file to use the file, one word on each line
 words_to_remove_file = "./wordlists/words_to_remove.txt"  # Create file to use the file, one word on each line
 
 
-def build_optimized_filename(words_text: str, date_prefix: str = "", max_length: int = 135) -> str:
+def build_optimized_filename(
+    words_text: str, date_prefix: str = "", max_length: int = 135
+) -> str:
     """
     Build an optimized filename by adding words incrementally while checking for duplicates,
     wordlist filters, and length constraints. This maximizes the number of unique words that can fit.
-    
+
     Parameters:
     - words_text (str): The text containing all potential words
-    - date_prefix (str): Optional date prefix to add at the beginning  
+    - date_prefix (str): Optional date prefix to add at the beginning
     - max_length (int): Maximum length for the final filename
-    
+
     Returns:
     - str: Optimized filename with maximum unique words within length constraint
     """
     if not words_text or not words_text.strip():
         return date_prefix.strip() if date_prefix else ""
-    
+
     # Load wordlists for filtering
     words_to_remove = set()
     words_to_include = set()
     names_to_include = set()
     non_personal_names = set()
-    
+
     try:
         words_to_remove_list = load_words_from_file(words_to_remove_file)
         if words_to_remove_list:
             words_to_remove = {word.lower() for word in words_to_remove_list if word}
     except:
         pass
-        
+
     try:
         words_to_include_list = load_words_from_file(words_to_include_file)
         if words_to_include_list:
             words_to_include = {word.lower() for word in words_to_include_list if word}
     except:
         pass
-        
+
     try:
         names_list = load_words_from_file(names_to_include_file)
         if names_list:
             names_to_include = {word.lower() for word in names_list if word}
     except:
         pass
-        
+
     try:
         non_personal_list = load_words_from_file(non_personal_names_to_include)
         if non_personal_list:
             non_personal_names = {word.lower() for word in non_personal_list if word}
     except:
         pass
-    
+
     # Start with date prefix if provided
     result_parts = [date_prefix] if date_prefix else []
-    current_length = len(date_prefix) + (1 if date_prefix else 0)  # +1 for space after date
-    
+    current_length = len(date_prefix) + (
+        1 if date_prefix else 0
+    )  # +1 for space after date
+
     # Split words and prepare for processing
     available_words = words_text.split()
     seen_words = set()
-    
+
     # Word variant mappings (same as in remove_duplicate_words)
     word_variants = {
-        'vaccin': 'vaccine',
-        'vaccination': 'vaccine', 
-        'vaccinera': 'vaccine',
-        'vaccinerad': 'vaccine',
-        'ovaccinerade': 'vaccine',
-        'covid': 'covid',
-        'covid19': 'covid',
-        'coronavirus': 'covid',
-        'corona': 'covid',
-        'pandemic': 'pandemic',
-        'pandemi': 'pandemic',
+        "vaccin": "vaccine",
+        "vaccination": "vaccine",
+        "vaccinera": "vaccine",
+        "vaccinerad": "vaccine",
+        "ovaccinerade": "vaccine",
+        "covid": "covid",
+        "covid19": "covid",
+        "coronavirus": "covid",
+        "corona": "covid",
+        "pandemic": "pandemic",
+        "pandemi": "pandemic",
     }
-    
+
     # If we have a date prefix, add its words to seen_words to avoid duplication
     if date_prefix:
         for word in date_prefix.split():
-            cleaned = re.sub(r'[^\w]', '', word.lower())
+            cleaned = re.sub(r"[^\w]", "", word.lower())
             if cleaned:
                 base_word = word_variants.get(cleaned, cleaned)
-                singular_word = base_word.rstrip('s') if base_word.endswith('s') and len(base_word) > 1 else base_word
+                singular_word = (
+                    base_word.rstrip("s")
+                    if base_word.endswith("s") and len(base_word) > 1
+                    else base_word
+                )
                 seen_words.add(singular_word)
-    
+
     # Process each word
     for word in available_words:
         if not word:
             continue
-            
+
         # Calculate what the new length would be
         word_length = len(word)
         space_needed = 1 if result_parts else 0  # Space before word (if not first)
         new_length = current_length + space_needed + word_length
-        
+
         # Skip if it would exceed max length
         if new_length > max_length:
             continue
-        
+
         # Clean the word for comparison
-        cleaned_word = re.sub(r'[^\w]', '', word.lower())
+        cleaned_word = re.sub(r"[^\w]", "", word.lower())
         if not cleaned_word:
             continue
-            
+
         # Check wordlists - skip if word should be removed
         if cleaned_word in words_to_remove:
             continue
-            
+
         # Check if word is in include lists (if they exist and are not empty)
         # Words are kept if: they are in include lists OR no include lists exist OR word is not commonly filtered
         should_include = True
-        has_include_lists = bool(words_to_include or names_to_include or non_personal_names)
-        
+        has_include_lists = bool(
+            words_to_include or names_to_include or non_personal_names
+        )
+
         if has_include_lists:
             # Include if the word is specifically in one of the include lists
             # OR if the word is longer than 3 characters (likely meaningful content)
             # This allows both curated important words and substantial content words
-            should_include = (cleaned_word in words_to_include or 
-                            cleaned_word in names_to_include or 
-                            cleaned_word in non_personal_names or
-                            len(cleaned_word) > 3)
-        
+            should_include = (
+                cleaned_word in words_to_include
+                or cleaned_word in names_to_include
+                or cleaned_word in non_personal_names
+                or len(cleaned_word) > 3
+            )
+
         if not should_include:
             continue
-            
+
         # Check for duplicates
         base_word = word_variants.get(cleaned_word, cleaned_word)
-        singular_word = base_word.rstrip('s') if base_word.endswith('s') and len(base_word) > 1 else base_word
+        singular_word = (
+            base_word.rstrip("s")
+            if base_word.endswith("s") and len(base_word) > 1
+            else base_word
+        )
         normalized_word = singular_word
-        
+
         # Only add if we haven't seen this word before
         if normalized_word not in seen_words:
             result_parts.append(word)
             seen_words.add(normalized_word)
             current_length = new_length
-    
-    return ' '.join(result_parts)
+
+    return " ".join(result_parts)
 
 
 def remove_duplicate_words(text: str) -> str:
     """
     Remove duplicate words from text, handling case variations and similar words.
-    
+
     This function removes duplicate words while preserving the first occurrence of each word.
     It handles:
     - Case insensitive duplicates (e.g., "COVID" and "covid")
     - Similar words like "vaccin" and "vaccine"
     - Simple plurals (e.g., "vaccine" and "vaccines")
     - Exact duplicates
-    
+
     Parameters:
     - text (str): The text from which to remove duplicate words
-    
+
     Returns:
     - str: Text with duplicate words removed
     """
     if not text or not text.strip():
         return text
-    
+
     words = text.split()
     seen_words = set()
     result_words = []
-    
+
     # Define word similarity mappings for common variations
     word_variants = {
-        'vaccin': 'vaccine',
-        'vaccination': 'vaccine', 
-        'vaccinera': 'vaccine',
-        'vaccinerad': 'vaccine',
-        'ovaccinerade': 'vaccine',
-        'covid': 'covid',
-        'covid19': 'covid',
-        'coronavirus': 'covid',
-        'corona': 'covid',
-        'pandemic': 'pandemic',
-        'pandemi': 'pandemic',
+        "vaccin": "vaccine",
+        "vaccination": "vaccine",
+        "vaccinera": "vaccine",
+        "vaccinerad": "vaccine",
+        "ovaccinerade": "vaccine",
+        "covid": "covid",
+        "covid19": "covid",
+        "coronavirus": "covid",
+        "corona": "covid",
+        "pandemic": "pandemic",
+        "pandemi": "pandemic",
     }
-    
+
     for word in words:
         if not word:  # Skip empty strings
             continue
-            
+
         # Clean the word for comparison (remove punctuation, convert to lowercase)
-        cleaned_word = re.sub(r'[^\w]', '', word.lower())
-        
+        cleaned_word = re.sub(r"[^\w]", "", word.lower())
+
         if not cleaned_word:  # Skip if word becomes empty after cleaning
             continue
-        
+
         # Check if this is a variant of a word we've already seen
         base_word = word_variants.get(cleaned_word, cleaned_word)
-        
+
         # Also check for simple plurals (words ending in 's')
-        singular_word = base_word.rstrip('s') if base_word.endswith('s') and len(base_word) > 1 else base_word
-        
+        singular_word = (
+            base_word.rstrip("s")
+            if base_word.endswith("s") and len(base_word) > 1
+            else base_word
+        )
+
         # Normalize to the most common form for comparison
         normalized_word = singular_word
-        
+
         # Check if we've already seen this word (or its variants)
         if normalized_word not in seen_words:
             result_words.append(word)
             seen_words.add(normalized_word)
-    
-    return ' '.join(result_words)
+
+    return " ".join(result_words)
 
 
 def sanitize_filename(filename: str) -> str:
@@ -546,128 +566,69 @@ def remove_gibberish(text):
     return cleaned_text
 
 
-def generate_new_filename(image_path, local_llm=True):
+def generate_new_filename(image_path):
     """
     Generates a new filename for an image based on its content, recognized text, and descriptive elements.
 
-    This function uses the Azure Computer Vision API to analyze the content of an image and extract descriptive text and recognized printed text (OCR). It then processes this information to detect the predominant language and extract key phrases from both the descriptive and OCR text. These key phrases are used to generate a new, sanitized filename that reflects the content of the image.
+    This function uses local LLM models (Ollama) and Docling OCR to analyze the content of an image
+    and extract descriptive text and recognized printed text. It then processes this information to
+    extract key phrases and generate a new, sanitized filename that reflects the content of the image.
+
+    The function implements a date detection hierarchy:
+    1. First tries to extract dates from OCR text within the image
+    2. Falls back to extracting dates from the filename pattern
+    3. Finally uses the file's modification timestamp as a last resort
 
     Parameters:
     - image_path (str): The path to the image file to be analyzed.
 
     Returns:
-    - str: A new, sanitized filename derived from the content and text recognized in the image. The filename is truncated to 135 characters to ensure compatibility with file systems and platforms that have length limitations.
+    - str: A new, sanitized filename derived from the content and text recognized in the image.
+           The filename is optimized to maximize unique words within a 135 character limit for
+           compatibility with various file systems and platforms.
 
-    The function handles language detection failures by defaulting to English ('en'). It also employs keyword extraction to distill the essence of the image's content into a concise, descriptive filename. The resulting filename is sanitized to remove any characters that might be problematic for file systems, including special characters and lengthy word lists.
-
-    Note:
-    The function makes external calls to the Azure Computer Vision API and requires a valid endpoint and subscription key. It also uses the 'langdetect' library for language detection and the 'yake' library for keyword extraction. These dependencies need to be installed and configured properly for the function to work.
+    The function uses Docling for OCR text extraction and Ollama's local LLM models for content
+    analysis and keyword extraction. The resulting filename is sanitized to remove problematic
+    characters and filtered using customizable word lists.
 
     Example usage:
     Assuming an image with descriptive content "sunset over the mountains" and recognized text "Enjoy the view",
-    the function might generate a filename like "sunset mountains enjoy view".
+    the function might generate a filename like "20230922 sunset mountains enjoy view".
     """
 
-    if not local_llm:
-        client = ComputerVisionClient(
-            endpoint, CognitiveServicesCredentials(subscription_key)
-        )
+    # Initialize variables
     descr_text = ""
-
-    # Description text doesn't produce much useful information in my use case, skipping and can double processing speed and images per month
-    # with open(image_path, "rb") as image_stream:
-    #     description_results = client.describe_image_in_stream(image_stream)
-    #     print("Beskrivning: ", end="")
-    #     for caption in description_results.captions:
-    #         print("'{}' med säkerhet {:.2f}%".format(caption.text, caption.confidence * 100))
-    #         descr_text += caption.text
-
-    # Recognize famous people (only available for microsoft managed accounts)
-    # with open(image_path, "rb") as image_stream:
-    #     domain_model_results = client.analyze_image_by_domain_in_stream("celebrities", image_stream)
-    #     print("\nKända personer i bilden:")
-    #     for celebrity in domain_model_results.result["celebrities"]:
-    #         print(celebrity["name"])
-
-    # OCR
     ocr_text = ""
 
-    if not local_llm:
-        with open(image_path, "rb") as image_stream:
-            try:
-                ocr_results = client.recognize_printed_text_in_stream(image_stream)
-            except Exception as e:
-                print(f"OCR failed: {e}")
-                seconds = check_time_in_string(str(e))
+    # response = ollama.chat(
+    #     model="gemma3",
+    #     messages=[
+    #         {"role": "user", "content": "Write all text found in the image in natural reading order but in one line, no introduction, no emojis. If text is too small to read efficiently just skip it.", "images": [image_path]}
+    #     ],
+    # )
 
-                if seconds == -1:  # Overused quota, wait for at least a day
-                    exit()
-                elif seconds is not None:
-                    print(
-                        f"\nHit limit. Waiting for {seconds} seconds before trying again..."
-                    )
-                    time.sleep(seconds)
-                    with open(image_path, "rb") as image_stream:
-                        try:
-                            ocr_results = client.recognize_printed_text_in_stream(
-                                image_stream
-                            )
-                        except Exception as e:
-                            print(f"OCR failed again: {e}")
-                            # This needs to be adapted in case desciptive text or famous people recognition is used
-                            fallback_date = extract_date_from_filename_or_timestamp(
-                                image_path
-                            )
-                            return (
-                                sanitize_filename(fallback_date).strip()
-                                if fallback_date
-                                else "unnamed"
-                            )
-                if "outside the supported" in str(e):
-                    print("Image type not supported")
-                    fallback_date = extract_date_from_filename_or_timestamp(image_path)
-                    return (
-                        sanitize_filename(fallback_date).strip()
-                        if fallback_date
-                        else "unnamed"
-                    )
+    # print(f"OCR text found in image: {response['message']['content']}\n")
+    # ocr_text = response["message"]['content']
 
-            print("\nText found in image:")
-            for region in ocr_results.regions:
-                for line in region.lines:
-                    line_text = " ".join([word.text for word in line.words])
-                    print(line_text)
-                    ocr_text += line_text + " "
-    else:
-        # response = ollama.chat(
-        #     model="gemma3",
-        #     messages=[
-        #         {"role": "user", "content": "Write all text found in the image in natural reading order but in one line, no introduction, no emojis. If text is too small to read efficiently just skip it.", "images": [image_path]}
-        #     ],
-        # )
+    print(f"Running Docling OCR on {image_path}...")
+    result = doc_converter.convert(str(image_path))
+    raw_md = result.document.export_to_markdown()
+    ocr_text = re.sub(r"^#+\s*", "", raw_md, flags=re.MULTILINE).strip()
+    print(f"OCR text via Docling:\n{ocr_text}\n")
 
-        # print(f"OCR text found in image: {response['message']['content']}\n")
-        # ocr_text = response["message"]['content']
+    response = ollama.chat(
+        model="gemma3:4b-it-qat",
+        messages=[
+            {
+                "role": "user",
+                "content": "Output keywords for this image in one line for the purpose of giving the image file a name for easy search. Just a single space between keywords. No emojis.",
+                "images": [image_path],
+            }
+        ],
+    )
 
-        print(f"Running Docling OCR on {image_path}...")
-        result = doc_converter.convert(str(image_path))
-        raw_md = result.document.export_to_markdown()
-        ocr_text = re.sub(r"^#+\s*", "", raw_md, flags=re.MULTILINE).strip()
-        print(f"OCR text via Docling:\n{ocr_text}\n")
-
-        response = ollama.chat(
-            model="gemma3:4b-it-qat",
-            messages=[
-                {
-                    "role": "user",
-                    "content": "Output keywords for this image in one line for the purpose of giving the image file a name for easy search. Just a single space between keywords. No emojis.",
-                    "images": [image_path],
-                }
-            ],
-        )
-
-        print(f"Description of Image: {response['message']['content']}\n")
-        descr_text = response["message"]["content"]
+    print(f"Description of Image: {response['message']['content']}\n")
+    descr_text = response["message"]["content"]
 
     # Extract date with priority: 1) OCR text, 2) filename, 3) file timestamp
     print("Extracting date with priority: OCR text -> filename -> timestamp")
@@ -682,48 +643,18 @@ def generate_new_filename(image_path, local_llm=True):
         else:
             print("No date found in filename or timestamp")
 
-        # try:
-        #     # Detect the language
-        #     ocr_lang = detect(ocr_text)
-        #     print(f"The detected language of the OCR text is: {ocr_lang}")
-        # except Exception as e:
-        #     print(f"Language detection failed: {e}")
-        #     ocr_lang = "en"
-
-        # try:
-        #     # Detect the language
-        #     desc_lang = detect(descr_text)
-        #     print(f"The detected language of the descritive text is: {desc_lang}")
-        # except Exception as e:
-        #     print(f"Language detection failed: {e}")
-        #     desc_lang = "en"
-
-        # max_ngram_size = 2
-        # deduplication_threshold = 0.4
-        # numOfKeywords = 15
-
-        # # Extract keywords from the OCR text
-        # language = "sv" if ocr_lang == "sv" else "en"
-
-        # kw_extractor = yake.KeywordExtractor(lan=language, n=max_ngram_size, dedupLim=deduplication_threshold, top=numOfKeywords, features=None)
-        # keywords = kw_extractor.extract_keywords(sanitize_filename(ocr_text))
-
-        # ocr_kw = ""
-        # for kw in keywords:
-        #     ocr_kw += kw[0] + " "
-
-        response = ollama.chat(
-            model="gemma3:4b-it-qat",
-            messages=[
-                {
-                    "role": "user",
-                    "content": "Out of the following words, pick 15 keywords that you think are most relevant for naming an image file. If you can't find 15, just pick the ones you think are most relevant. No other text in the reply, no motivations, just the keywords one after another in a single line with a single space between: "
-                    + ocr_text
-                    + " "
-                    + descr_text,
-                }
-            ],
-        )
+    response = ollama.chat(
+        model="gemma3:4b-it-qat",
+        messages=[
+            {
+                "role": "user",
+                "content": "Out of the following words, pick 15 keywords that you think are most relevant for naming an image file. If you can't find 15, just pick the ones you think are most relevant. No other text in the reply, no motivations, just the keywords one after another in a single line with a single space between: "
+                + ocr_text
+                + " "
+                + descr_text,
+            }
+        ],
+    )
     ocr_kw = response["message"]["content"]
     print(f"OCR and description keywords: {ocr_kw}\n")
 
@@ -748,24 +679,26 @@ def generate_new_filename(image_path, local_llm=True):
 
     # Clean up the text first (only character cleaning, not wordlist filtering)
     processed_text = fix_common_ocr_mistakes(remove_gibberish(new_file_name))
-    
+
     # Remove illegal characters but don't apply wordlist filtering yet
-    illegal_chars = "<>:,.•=-\"/\\|?*βß<>%&\\{\\}[]()$!#@;^`~''""„‚'´¨»«€£¥—_§±"
+    illegal_chars = "<>:,.•=-\"/\\|?*βß<>%&\\{\\}[]()$!#@;^`~''" "„‚'´¨»«€£¥—_§±"
     for char in illegal_chars:
         processed_text = processed_text.replace(char, "")
-    
+
     # Replace multiple spaces with single space
     processed_text = re.sub(" +", " ", processed_text).strip()
-    
+
     # Build optimized filename with incremental duplicate checking, wordlist filtering, and length management
     new_file_name = build_optimized_filename(
         words_text=processed_text,
         date_prefix=found_dates if found_dates else "",
-        max_length=135
+        max_length=135,
     )
-    
+
     # Fallback in case we end up with just the date or empty string
-    if not new_file_name.strip() or (found_dates and new_file_name.strip() == found_dates.strip()):
+    if not new_file_name.strip() or (
+        found_dates and new_file_name.strip() == found_dates.strip()
+    ):
         fallback_name = f"unnamed{random.randint(0, 1000)}"
         if found_dates:
             new_file_name = found_dates + " " + fallback_name
@@ -884,22 +817,14 @@ def main():
     # Specify your source and target folders. Could be the Screenshot folder directly if you're brave.
     source_folder = "./images/to_name"
     target_folder = "./images/named_images"
-    # Processing maximum of 10 images per minute as 2 calls and 20 max per minute, 9 to be safe
-    # But if not using the description text, can process 18 images per minute, or 17 to be on the safe side
-    # Seems it doesn't only count per minute, so finetuning to quarter of a minute instead, to avoid Exceptions.
-
-    # Check if the variables were found
-    # if subscription_key and endpoint:
-    #     print("Found the environment variables.")
-    # else:
-    #     print("Azure Environment variables not found.")
-    #     return 1
+    # Processing can now be much faster since we're using local LLM instead of Azure API limits
 
     # Check if spacy language model is downloaded, ask to download if not
     # Replace 'en_core_web_sm' with your specific spaCy model name
     code = download_spacy_model("en_core_web_sm")
     if code == -1:
         print("Please install language model for spaCy. Exiting.")
+        return 1
 
     clean_up_gpu_memory()
     process_images(source_folder, target_folder, 100)
