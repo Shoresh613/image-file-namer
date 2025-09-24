@@ -3,7 +3,6 @@ Configuration settings for the Image File Namer application.
 """
 
 from pathlib import Path
-from typing import List
 
 # File paths and directories
 WORDLISTS_DIR = Path("./wordlists")
@@ -76,4 +75,6 @@ OCR_CORRECTIONS = {
     "darnage": "damage",
     "Jirn": "Jim",
     "YouTuhe": "YouTube",
+    "Bíden": "Biden",
+    "Representalives": "Representatives",
 }
