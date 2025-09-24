@@ -10,7 +10,7 @@ source_directory = './images/to_resize/'
 target_directory = './images/resized/'
 
 # Set amount of scaling (usually 0.5 for 50% reduction in size, or 0.75 for 75% reduction in size in case of X22 landscape screenshots)
-scaling_factor = 0.5
+scaling_factor = 0.75
 
 # Create the target directory if it doesn't exist
 if not os.path.exists(target_directory):
@@ -24,6 +24,8 @@ def resize_image(input_path, output_path):
             new_size = (int(img.size[0] * scaling_factor), int(img.size[1] * scaling_factor))
             resized_img = img.resize(new_size, Image.Resampling.LANCZOS)
             
+            if resized_img.mode == 'RGBA':
+                resized_img = resized_img.convert('RGB')
             resized_img.save(output_path, 'JPEG', quality=70)
             print(f"Resized {input_path} and saved to {output_path}")
 

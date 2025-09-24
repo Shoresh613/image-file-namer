@@ -1,0 +1,10 @@
+{
+  "dataset_name": {
+    "file_name": "data.json",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "conversations",
+      "images": "images"
+    }
+  }
+}
