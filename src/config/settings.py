@@ -39,6 +39,9 @@ NER_CATEGORIES = [
 OLLAMA_MODEL_DESCRIPTION = "gemma3:4b-it-qat"
 OLLAMA_MODEL_KEYWORDS = "gemma3:4b-it-qat"
 
+# OCR language configuration (Tesseract language codes separated by '+')
+OCR_LANGUAGES = "eng+swe+deu"
+
 # Date extraction patterns
 DATE_PATTERNS = [
     r"(?<!\d)(20\d{2}-\d{2}-\d{2})(?!\d)",  # YYYY-MM-DD

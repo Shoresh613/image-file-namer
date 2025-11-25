@@ -3,23 +3,28 @@ OCR and content analysis processor.
 """
 
 import re
-from typing import Optional
 
 import ollama
-from docling.document_converter import DocumentConverter
+from PIL import Image
+import pytesseract
 
-from ..config import OLLAMA_MODEL_DESCRIPTION, OLLAMA_MODEL_KEYWORDS
+from ..config import (
+    OLLAMA_MODEL_DESCRIPTION,
+    OLLAMA_MODEL_KEYWORDS,
+    OCR_LANGUAGES,
+)
 
 
 class ContentProcessor:
     """Handles OCR and content analysis for images."""
 
     def __init__(self):
-        self.doc_converter = DocumentConverter()
+        # No heavy initialization needed for pytesseract
+        pass
 
     def extract_ocr_text(self, image_path: str) -> str:
         """
-        Extract text from image using Docling OCR.
+        Extract text from image using Tesseract OCR (multi-language).
 
         Args:
             image_path: Path to the image file
@@ -27,11 +32,18 @@ class ContentProcessor:
         Returns:
             Extracted text from the image
         """
-        print(f"Running Docling OCR on {image_path}...")
-        result = self.doc_converter.convert(str(image_path))
-        raw_md = result.document.export_to_markdown()
-        ocr_text = re.sub(r"^#+\s*", "", raw_md, flags=re.MULTILINE).strip()
-        print(f"OCR text via Docling:\n{ocr_text}\n")
+        print(f"Running Tesseract OCR on {image_path}...")
+        try:
+            image = Image.open(image_path)
+            ocr_text = pytesseract.image_to_string(image, lang=OCR_LANGUAGES)
+        except Exception as exc:
+            print(f"Failed to run Tesseract on {image_path}: {exc}")
+            return ""
+
+        # Normalize whitespace while preserving spaces between words
+        ocr_text = re.sub(r"[ \t]{2,}", " ", ocr_text)
+        ocr_text = re.sub(r"\n{2,}", "\n", ocr_text).strip()
+        print(f"OCR text via Tesseract:\n{ocr_text}\n")
         return ocr_text
 
     def get_image_description(self, image_path: str) -> str:

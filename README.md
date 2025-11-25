@@ -25,6 +25,15 @@ Generated filename: `"20230422 United nypost America biden overthrow prompted Hu
 
 The date is generated from the filename. Edit the script to suit your preferred date format.
 
+### prerequisits
+
+There is need to install tesseract-ocr separately, for instance like this in linux:
+
+```bash
+sudo apt-get install tesseract-ocr tesseract-ocr-eng tesseract-ocr-swe tesseract-ocr-deu
+pip install -r requirements.txt
+```
+
 ### Folders
 All relative to the git directory:
 

@@ -4,5 +4,6 @@ langdetect
 # yake
 spacy
 ollama
-docling
 torch
+pytesseract
+Pillow
