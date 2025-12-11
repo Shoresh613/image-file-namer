@@ -72,7 +72,7 @@ Required step to ensure filter out keywords in English (change to your use case,
 ### Extra related scripts developed in the process
 
 #### Image preprocessing
-`resize_images.py`: Resizes images 50% and stores as jpeg (70% quality), suitable for downscaling screenshots for storage.
+`resize_images.py`: Resizes images 50% and stores as jpeg (60% quality), suitable for downscaling screenshots for storage.
 
 `scale_hor_50.py`: Resizes images horizontally in `scale_horizontally` folder, saves in `scaled_horizontally` folder. There are some presets that can be extended based on your use cases.
 

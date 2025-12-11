@@ -20,7 +20,9 @@ def crop_image(input_path, output_path, mode_settings):
         right = eval(str(width) + mode_settings['right'].split('width')[1])
         lower = eval(str(height) + mode_settings['lower'].split('height')[1])
         cropped_img = img.crop((left, upper, right, lower))
-        cropped_img.save(output_path, 'JPEG')
+        if cropped_img.mode != "RGB":
+            cropped_img = cropped_img.convert("RGB")
+        cropped_img.save(output_path, 'JPEG', quality=60)
 
 def process_directory(directory_path, output_directory, mode_settings):
     if not os.path.exists(output_directory):

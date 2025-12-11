@@ -1,5 +1,5 @@
 ## Resize images in a directory to 50% of their original size (if larger than 600*600)
-## and save them as JPEG files with 70% quality.
+## and save them as JPEG files with 60% quality.
 
 from PIL import Image
 import os
@@ -11,6 +11,7 @@ target_directory = "./images/resized/"
 
 # Set amount of scaling (usually 0.5 for 50% reduction in size, or 0.75 for 75% reduction in size in case of X22 landscape screenshots)
 scaling_factor = 0.50
+jpeg_quality = 60
 
 # Create the target directory if it doesn't exist
 if not os.path.exists(target_directory):
@@ -28,9 +29,10 @@ def resize_image(input_path, output_path):
             )
             resized_img = img.resize(new_size, Image.Resampling.LANCZOS)
 
-            if resized_img.mode == "RGBA":
+            # JPEG does not support alpha, so normalise the mode before saving
+            if resized_img.mode != "RGB":
                 resized_img = resized_img.convert("RGB")
-            resized_img.save(output_path, "JPEG", quality=70)
+            resized_img.save(output_path, "JPEG", quality=jpeg_quality)
             print(f"Resized {input_path} and saved to {output_path}")
 
 
