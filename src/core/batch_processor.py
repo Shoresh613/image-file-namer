@@ -91,12 +91,12 @@ class BatchProcessor:
                         os.rename(image_path, new_path)
                         print(f"Processed: {new_path}")
                     else:
-                        # Convert other formats to JPEG at 50% quality
+                        # Convert other formats to JPEG at 70% quality
                         new_path = target_folder / f"{new_filename}.jpg"
                         with Image.open(image_path) as img:
                             if img.mode != "RGB":
                                 img = img.convert("RGB")
-                            img.save(new_path, "JPEG", quality=50, optimize=True)
+                            img.save(new_path, "JPEG", quality=70, optimize=True)
                         image_path.unlink()
                         print(f"Processed: {new_path}")
 

@@ -14,10 +14,10 @@ def scale_image_horizontally(input_path, output_path):
             # Resize the image
             resized_img = img.resize((new_width, new_height), Image.LANCZOS)
 
-            # Save the resized image as a JPEG at 50% quality
+            # Save the resized image as a JPEG at 70% quality
             if resized_img.mode != "RGB":
                 resized_img = resized_img.convert("RGB")
-            resized_img.save(output_path, 'JPEG', quality=50)
+            resized_img.save(output_path, 'JPEG', quality=70)
     except Exception as e:
         print(f"Failed to process {input_path}: {e}")
 

@@ -11,7 +11,7 @@ target_directory = "./images/resized/"
 
 # Set amount of scaling (usually 0.5 for 50% reduction in size, or 0.75 for 75% reduction in size in case of X22 landscape screenshots)
 scaling_factor = 0.50
-jpeg_quality = 50
+jpeg_quality = 70
 
 # Create the target directory if it doesn't exist
 if not os.path.exists(target_directory):
