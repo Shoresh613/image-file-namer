@@ -7,6 +7,8 @@ import time
 from pathlib import Path
 from collections import deque
 from typing import Union
+
+from PIL import Image
 from tqdm import tqdm
 
 from ..utils import count_image_files
@@ -81,27 +83,22 @@ class BatchProcessor:
                     new_filename = self.image_namer.generate_new_filename(
                         str(image_path)
                     ).strip()
-                    new_filename += image_path.suffix
-                    new_path = target_folder / new_filename
+                    ext = image_path.suffix.lower()
 
-                    # Rename (move) file to new location with a new name
-                    try:
+                    if ext in (".jpg", ".jpeg"):
+                        # Keep JPEGs as-is, just move/rename
+                        new_path = target_folder / f"{new_filename}{ext}"
                         os.rename(image_path, new_path)
                         print(f"Processed: {new_path}")
-                    except FileExistsError:
-                        # Try with a suffix if file exists
-                        name_stem = new_filename.rsplit(".", 1)[0]
-                        extension = new_filename.rsplit(".", 1)[1]
-                        new_filename_alt = f"{name_stem}_{image_path.suffix}"
-                        new_path_alt = target_folder / new_filename_alt
-                        try:
-                            os.rename(image_path, new_path_alt)
-                            print(
-                                f"Processed (renamed due to conflict): {new_path_alt}"
-                            )
-                        except Exception as e:
-                            print(f"Failed to process {image_path}: {e}")
-                            continue
+                    else:
+                        # Convert other formats to JPEG at 50% quality
+                        new_path = target_folder / f"{new_filename}.jpg"
+                        with Image.open(image_path) as img:
+                            if img.mode != "RGB":
+                                img = img.convert("RGB")
+                            img.save(new_path, "JPEG", quality=50, optimize=True)
+                        image_path.unlink()
+                        print(f"Processed: {new_path}")
 
                 except Exception as e:
                     print(f"Error processing {image_path}: {e}")
