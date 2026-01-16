@@ -2,10 +2,6 @@
 Main image file namer class that orchestrates the entire process.
 """
 
-import random
-from pathlib import Path
-from typing import Optional
-
 from ..processors import ContentProcessor, NERProcessor
 from ..utils import (
     extract_date_from_ocr_text,

@@ -43,6 +43,9 @@ class BatchProcessor:
         # Ensure target folder exists
         target_folder.mkdir(parents=True, exist_ok=True)
 
+        # Define supported image extensions
+        image_extensions = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp"]
+
         # Use a deque to track the timestamps of processed images
         timestamps = deque()
 
@@ -50,11 +53,8 @@ class BatchProcessor:
         total_files = count_image_files(str(source_folder))
         processed_files = 0
 
-        # Define supported image extensions
-        image_extensions = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp"]
-
         for image_path in tqdm(
-            source_folder.glob("*"),
+            source_folder.rglob("*"),
             total=total_files,
             desc="Processing images",
             unit="image",
@@ -85,14 +85,18 @@ class BatchProcessor:
                     ).strip()
                     ext = image_path.suffix.lower()
 
+                    relative_path = image_path.relative_to(source_folder).parent
+                    target_subfolder = target_folder / relative_path
+                    target_subfolder.mkdir(parents=True, exist_ok=True)
+
                     if ext in (".jpg", ".jpeg"):
                         # Keep JPEGs as-is, just move/rename
-                        new_path = target_folder / f"{new_filename}{ext}"
+                        new_path = target_subfolder / f"{new_filename}{ext}"
                         os.rename(image_path, new_path)
                         print(f"Processed: {new_path}")
                     else:
                         # Convert other formats to JPEG at 70% quality
-                        new_path = target_folder / f"{new_filename}.jpg"
+                        new_path = target_subfolder / f"{new_filename}.jpg"
                         with Image.open(image_path) as img:
                             if img.mode != "RGB":
                                 img = img.convert("RGB")

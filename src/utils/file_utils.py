@@ -31,7 +31,7 @@ def load_words_from_file(file_path: str) -> Optional[Set[str]]:
 
 def count_image_files(directory: str) -> int:
     """
-    Count the number of image files in a directory.
+    Count the number of image files in a directory (recursively).
 
     Args:
         directory: Path to the directory
@@ -42,10 +42,13 @@ def count_image_files(directory: str) -> int:
     if not os.path.exists(directory):
         return 0
 
-    files = os.listdir(directory)
     image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp")
-    image_files = [file for file in files if file.lower().endswith(image_extensions)]
-    return len(image_files)
+    root = Path(directory)
+    return sum(
+        1
+        for path in root.rglob("*")
+        if path.is_file() and path.suffix.lower() in image_extensions
+    )
 
 
 def sanitize_filename_basic(filename: str) -> str:

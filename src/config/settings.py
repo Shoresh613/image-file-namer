@@ -36,8 +36,14 @@ NER_CATEGORIES = [
 ]
 
 # OCR and LLM settings
-OLLAMA_MODEL_DESCRIPTION = "gemma3:4b-it-qat"
-OLLAMA_MODEL_KEYWORDS = "gemma3:4b-it-qat"
+# Smaller default model to reduce GPU pressure during batch runs.
+OLLAMA_MODEL_DESCRIPTION = "gemma3:27b"
+OLLAMA_MODEL_KEYWORDS = "gemma3:27b"
+OLLAMA_NUM_GPU = 0
+OLLAMA_NUM_CPU = 28
+OLLAMA_MIN_SECONDS_BETWEEN_CALLS = 1.0
+OLLAMA_MAX_RETRIES = 2
+OLLAMA_RETRY_BACKOFF_SECONDS = 2.0
 
 # OCR language configuration (Tesseract language codes separated by '+')
 OCR_LANGUAGES = "eng+swe+deu"

@@ -3,6 +3,7 @@ OCR and content analysis processor.
 """
 
 import re
+import time
 
 import ollama
 from PIL import Image
@@ -11,6 +12,11 @@ import pytesseract
 from ..config import (
     OLLAMA_MODEL_DESCRIPTION,
     OLLAMA_MODEL_KEYWORDS,
+    OLLAMA_MAX_RETRIES,
+    OLLAMA_MIN_SECONDS_BETWEEN_CALLS,
+    OLLAMA_NUM_GPU,
+    OLLAMA_NUM_CPU,
+    OLLAMA_RETRY_BACKOFF_SECONDS,
     OCR_LANGUAGES,
 )
 
@@ -20,7 +26,31 @@ class ContentProcessor:
 
     def __init__(self):
         # No heavy initialization needed for pytesseract
-        pass
+        self._last_ollama_call = 0.0
+
+    def _ollama_chat(self, model: str, messages: list) -> dict:
+        options = {
+            "num_gpu": OLLAMA_NUM_GPU,
+            "num_thread": OLLAMA_NUM_CPU,
+        }
+
+        for attempt in range(OLLAMA_MAX_RETRIES + 1):
+            now = time.time()
+            elapsed = now - self._last_ollama_call
+            if elapsed < OLLAMA_MIN_SECONDS_BETWEEN_CALLS:
+                time.sleep(OLLAMA_MIN_SECONDS_BETWEEN_CALLS - elapsed)
+            try:
+                response = ollama.chat(model=model, messages=messages, options=options)
+                self._last_ollama_call = time.time()
+                return response
+            except Exception as exc:
+                if attempt >= OLLAMA_MAX_RETRIES:
+                    raise
+                backoff = OLLAMA_RETRY_BACKOFF_SECONDS * (attempt + 1)
+                print(f"Ollama call failed: {exc}. Retrying in {backoff:.1f}s.")
+                time.sleep(backoff)
+
+        raise RuntimeError("Ollama call failed after retries.")
 
     def extract_ocr_text(self, image_path: str) -> str:
         """
@@ -56,7 +86,7 @@ class ContentProcessor:
         Returns:
             Descriptive text for the image
         """
-        response = ollama.chat(
+        response = self._ollama_chat(
             model=OLLAMA_MODEL_DESCRIPTION,
             messages=[
                 {
@@ -82,7 +112,7 @@ class ContentProcessor:
         Returns:
             Selected keywords for filename
         """
-        response = ollama.chat(
+        response = self._ollama_chat(
             model=OLLAMA_MODEL_KEYWORDS,
             messages=[
                 {
