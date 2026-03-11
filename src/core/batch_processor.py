@@ -11,7 +11,6 @@ from typing import Union
 from PIL import Image
 from tqdm import tqdm
 
-from ..utils import count_image_files
 from .image_file_namer import ImageFileNamer
 
 
@@ -26,6 +25,21 @@ class BatchProcessor:
     def __init__(self, rate_limit_per_minute: int = 100):
         self.rate_limit_per_minute = rate_limit_per_minute
         self.image_namer = ImageFileNamer()
+
+    @staticmethod
+    def _is_animated_gif(image_path: Path) -> bool:
+        """Return True when a GIF has more than one frame."""
+        if image_path.suffix.lower() != ".gif":
+            return False
+
+        try:
+            with Image.open(image_path) as img:
+                return bool(
+                    getattr(img, "is_animated", False)
+                    and getattr(img, "n_frames", 1) > 1
+                )
+        except Exception:
+            return False
 
     def process_images(
         self, source_folder: Union[str, Path], target_folder: Union[str, Path]
@@ -43,73 +57,84 @@ class BatchProcessor:
         # Ensure target folder exists
         target_folder.mkdir(parents=True, exist_ok=True)
 
-        # Define supported image extensions
+        # Define supported image extensions, including static GIFs
         image_extensions = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp"]
 
         # Use a deque to track the timestamps of processed images
         timestamps = deque()
 
-        # Calculate total number of files once
-        total_files = count_image_files(str(source_folder))
+        # Gather processable files and skip only animated GIFs
+        image_paths = []
+        skipped_animated_gifs = 0
+        for path in source_folder.rglob("*"):
+            if not path.is_file() or path.suffix.lower() not in image_extensions:
+                continue
+
+            if self._is_animated_gif(path):
+                skipped_animated_gifs += 1
+                print(f"Skipping animated GIF: {path}")
+                continue
+
+            image_paths.append(path)
+
+        total_files = len(image_paths)
         processed_files = 0
 
         for image_path in tqdm(
-            source_folder.rglob("*"),
+            image_paths,
             total=total_files,
             desc="Processing images",
             unit="image",
         ):
-            # Process only image files
-            if image_path.is_file() and image_path.suffix.lower() in image_extensions:
+            current_time = time.time()
+            print(f"Processing {image_path} ({processed_files + 1} of {total_files})")
+
+            # Remove timestamps older than 61 seconds from the deque (+1 to be on the safe side)
+            while timestamps and current_time - timestamps[0] > 61:
+                timestamps.popleft()
+
+            # Check if processing limit has been reached
+            if len(timestamps) >= self.rate_limit_per_minute:
+                sleep_time = 61 - (current_time - timestamps[0])
+                print(f"Rate limit reached, sleeping for {sleep_time:.2f} seconds.")
+                time.sleep(sleep_time)
+                # After sleeping, update current time
                 current_time = time.time()
-                print(
-                    f"Processing {image_path} ({processed_files + 1} of {total_files})"
-                )
 
-                # Remove timestamps older than 61 seconds from the deque (+1 to be on the safe side)
-                while timestamps and current_time - timestamps[0] > 61:
-                    timestamps.popleft()
+            # Proceed with processing
+            try:
+                new_filename = self.image_namer.generate_new_filename(
+                    str(image_path)
+                ).strip()
+                ext = image_path.suffix.lower()
 
-                # Check if processing limit has been reached
-                if len(timestamps) >= self.rate_limit_per_minute:
-                    sleep_time = 61 - (current_time - timestamps[0])
-                    print(f"Rate limit reached, sleeping for {sleep_time:.2f} seconds.")
-                    time.sleep(sleep_time)
-                    # After sleeping, update current time
-                    current_time = time.time()
+                relative_path = image_path.relative_to(source_folder).parent
+                target_subfolder = target_folder / relative_path
+                target_subfolder.mkdir(parents=True, exist_ok=True)
 
-                # Proceed with processing
-                try:
-                    new_filename = self.image_namer.generate_new_filename(
-                        str(image_path)
-                    ).strip()
-                    ext = image_path.suffix.lower()
+                if ext in (".jpg", ".jpeg"):
+                    # Keep JPEGs as-is, just move/rename
+                    new_path = target_subfolder / f"{new_filename}{ext}"
+                    os.rename(image_path, new_path)
+                    print(f"Processed: {new_path}")
+                else:
+                    # Convert other formats to JPEG at 70% quality
+                    new_path = target_subfolder / f"{new_filename}.jpg"
+                    with Image.open(image_path) as img:
+                        if img.mode != "RGB":
+                            img = img.convert("RGB")
+                        img.save(new_path, "JPEG", quality=70, optimize=True)
+                    image_path.unlink()
+                    print(f"Processed: {new_path}")
 
-                    relative_path = image_path.relative_to(source_folder).parent
-                    target_subfolder = target_folder / relative_path
-                    target_subfolder.mkdir(parents=True, exist_ok=True)
+            except Exception as e:
+                print(f"Error processing {image_path}: {e}")
+                continue
 
-                    if ext in (".jpg", ".jpeg"):
-                        # Keep JPEGs as-is, just move/rename
-                        new_path = target_subfolder / f"{new_filename}{ext}"
-                        os.rename(image_path, new_path)
-                        print(f"Processed: {new_path}")
-                    else:
-                        # Convert other formats to JPEG at 70% quality
-                        new_path = target_subfolder / f"{new_filename}.jpg"
-                        with Image.open(image_path) as img:
-                            if img.mode != "RGB":
-                                img = img.convert("RGB")
-                            img.save(new_path, "JPEG", quality=70, optimize=True)
-                        image_path.unlink()
-                        print(f"Processed: {new_path}")
-
-                except Exception as e:
-                    print(f"Error processing {image_path}: {e}")
-                    continue
-
-                # Log the timestamp of this processing
-                timestamps.append(time.time())
-                processed_files += 1
+            # Log the timestamp of this processing
+            timestamps.append(time.time())
+            processed_files += 1
 
         print(f"Finished processing {processed_files} images.")
+        if skipped_animated_gifs:
+            print(f"Skipped {skipped_animated_gifs} animated GIF(s).")
