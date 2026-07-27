@@ -37,8 +37,8 @@ NER_CATEGORIES = [
 
 # OCR and LLM settings
 # Smaller default model to reduce GPU pressure during batch runs.
-OLLAMA_MODEL_DESCRIPTION = "gemma4:31b"
-OLLAMA_MODEL_KEYWORDS = "gemma4:31b"
+OLLAMA_MODEL_DESCRIPTION = "gemma4:31b-gpu64k"
+OLLAMA_MODEL_KEYWORDS = "gemma4:31b-gpu64k"
 OLLAMA_NUM_GPU = 1
 OLLAMA_NUM_CPU = 28
 OLLAMA_MIN_SECONDS_BETWEEN_CALLS = 1.0
