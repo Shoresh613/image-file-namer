@@ -40,8 +40,8 @@ NER_CATEGORIES = [
 # Ollama GPU settings. ``num_gpu`` is the number of *model layers* to offload,
 # not the number of physical GPUs. -1 asks Ollama to offload every layer that
 # fits, which is required for a full-GPU model run on Strix Halo.
-OLLAMA_MODEL_DESCRIPTION = "gemma4:31b-gpu"
-OLLAMA_MODEL_KEYWORDS = "gemma4:31b-gpu"
+OLLAMA_MODEL_DESCRIPTION = "gemma4:26b-a4b-it-qat-gpu"
+OLLAMA_MODEL_KEYWORDS = "gemma4:26b-a4b-it-qat-gpu"
 OLLAMA_NUM_GPU = -1
 OLLAMA_NUM_CPU = 28
 # 64k covers high-resolution vision input plus OCR text. It is deliberately
