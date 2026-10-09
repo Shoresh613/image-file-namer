@@ -20,6 +20,7 @@ from ..config import (
     LEMONADE_API_KEY,
     LEMONADE_TIMEOUT_SECONDS,
     LEMONADE_MAX_RETRIES,
+    LEMONADE_LLAMACPP_ARGS,
     LEMONADE_RETRY_BACKOFF_SECONDS,
     OCR_LANGUAGES,
 )
@@ -76,6 +77,20 @@ class ContentProcessor:
         "nothing else."
     )
 
+    def __init__(self) -> None:
+        self._prepared_models: set[str] = set()
+
+    def prepare_model(self, model: str = LEMONADE_MODEL) -> None:
+        """Load the model with the vision batch settings once per processor."""
+        if model in self._prepared_models:
+            return
+        print(f"Loading Lemonade model {model}: {LEMONADE_LLAMACPP_ARGS}")
+        self._post_lemonade("load", {
+            "model_name": model,
+            "llamacpp_args": LEMONADE_LLAMACPP_ARGS,
+        })
+        self._prepared_models.add(model)
+
     @staticmethod
     def _response_content(response: dict[str, Any]) -> str:
         """Extract keywords from an OpenAI-compatible completion response."""
@@ -114,28 +129,38 @@ class ContentProcessor:
             "top_p": 0.9,
             "chat_template_kwargs": {"enable_thinking": False},
         }
+        self.prepare_model(model)
+        started = time.perf_counter()
+        response = self._post_lemonade("chat/completions", payload)
+        self._response_content(response)
+        usage = response.get("usage") or {}
+        print(
+            f"\nLemonade performance: {time.perf_counter() - started:.2f} s"
+            f"\n  Prompt tokens: {usage.get('prompt_tokens', 'unknown')}"
+            f"\n  Output tokens: {usage.get('completion_tokens', 'unknown')}\n"
+        )
+        return response
+
+    def _post_lemonade(
+        self, endpoint: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Send authenticated JSON to the configured server, with transient retries."""
         headers = {"Content-Type": "application/json"}
         if LEMONADE_API_KEY:
             headers["Authorization"] = f"Bearer {LEMONADE_API_KEY}"
         request = Request(
-            f"{LEMONADE_BASE_URL}/chat/completions",
+            f"{LEMONADE_BASE_URL}/{endpoint}",
             data=json.dumps(payload).encode("utf-8"),
             headers=headers,
             method="POST",
         )
 
         for attempt in range(LEMONADE_MAX_RETRIES + 1):
-            started = time.perf_counter()
             try:
                 with urlopen(request, timeout=LEMONADE_TIMEOUT_SECONDS) as result:
                     response = json.load(result)
-                self._response_content(response)
-                usage = response.get("usage") or {}
-                print(
-                    f"\nLemonade performance: {time.perf_counter() - started:.2f} s"
-                    f"\n  Prompt tokens: {usage.get('prompt_tokens', 'unknown')}"
-                    f"\n  Output tokens: {usage.get('completion_tokens', 'unknown')}\n"
-                )
+                if response.get("status") == "error":
+                    raise RuntimeError(f"Lemonade {endpoint}: {response.get('message')}")
                 return response
             except HTTPError as exc:
                 detail = exc.read().decode("utf-8", errors="replace")

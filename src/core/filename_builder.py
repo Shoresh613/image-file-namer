@@ -56,6 +56,37 @@ class FilenameBuilder:
                 word.lower() for word in non_personal_list if word
             }
 
+    def build_keyword_filename(
+        self, words_text: str, date_prefix: str = "", max_length: int = None
+    ) -> str:
+        """Join keywords in PascalCase, keeping each individual word only once."""
+        if max_length is None:
+            max_length = self.max_length
+        filename = sanitize_filename_basic(date_prefix).replace(" ", "")
+        seen = set()
+        excluded_words = {word.casefold() for word in self.words_to_remove}
+        excluded_words.add("screenshot")
+        for keyword in words_text.split():
+            if sanitize_filename_basic(keyword).casefold() in excluded_words:
+                continue
+            # Deduplicate individual words, including words inside compounds.
+            # Ambition-Sverige Sverige-Först Sverige becomes AmbitionSverigeFörst.
+            parts = []
+            pending = set()
+            for part in re.findall(r"[^\W_]+", keyword):
+                normalized = part.casefold()
+                if normalized in seen or normalized in pending or normalized in excluded_words:
+                    continue
+                parts.append(part[:1].upper() + part[1:])
+                pending.add(normalized)
+            compact = "".join(parts)
+            if not compact or len(filename) + len(compact) > max_length:
+                continue
+            filename += compact
+            # Only reserve words that actually made it into the filename.
+            seen.update(pending)
+        return filename
+
     def build_optimized_filename(
         self, words_text: str, date_prefix: str = "", max_length: int = None
     ) -> str:

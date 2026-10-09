@@ -4,12 +4,10 @@ Main image file namer class that orchestrates the entire process.
 
 from typing import Any
 
-from ..processors import ContentProcessor, NERProcessor
+from ..processors import ContentProcessor
 from ..utils import (
     extract_date_from_ocr_text,
     extract_date_from_filename_or_timestamp,
-    fix_common_ocr_mistakes,
-    remove_gibberish,
 )
 from .filename_builder import FilenameBuilder
 
@@ -22,9 +20,8 @@ class ImageFileNamer:
 
     1. Tesseract OCR
     2. Image analysis through Lemonade
-    3. Named entity recognition
-    4. Date extraction
-    5. Filename sanitization and optimization
+    3. Date extraction
+    4. Compact filenames from image keywords only
 
     Only one Lemonade request is made per image.
 
@@ -48,10 +45,6 @@ class ImageFileNamer:
 
         self.content_processor = (
             ContentProcessor()
-        )
-
-        self.ner_processor = (
-            NERProcessor()
         )
 
         self.filename_builder = (
@@ -89,26 +82,6 @@ class ImageFileNamer:
 
         return str(value).strip()
 
-    @classmethod
-    def _combine_keyword_sources(
-        cls,
-        ner_words: Any,
-        image_keywords: Any,
-    ) -> str:
-        """
-        Combine NER terms and image keywords with safe spacing.
-        """
-        parts = [
-            cls._value_to_text(ner_words),
-            cls._value_to_text(image_keywords),
-        ]
-
-        return " ".join(
-            part
-            for part in parts
-            if part
-        )
-
     def generate_new_filename(
         self,
         image_path: str,
@@ -133,7 +106,7 @@ class ImageFileNamer:
                 Path to the image file.
 
         Returns:
-            A sanitized and optimized filename.
+            A date prefix followed by image keywords in PascalCase.
         """
         print(
             f"\nProcessing image: {image_path}"
@@ -186,48 +159,8 @@ class ImageFileNamer:
                     "filename, or timestamp."
                 )
 
-        # Extract names, places, organizations and other useful entities
-        # from the complete OCR text.
-        ner_words = (
-            self.ner_processor.get_words_of_interest(
-                ocr_text
-            )
-        )
-
-        print(
-            f"Words of interest: {ner_words}"
-        )
-
-        print(
-            f"Image keywords: {image_keywords}"
-        )
-
-        # The date is deliberately not included here because it is supplied
-        # separately to FilenameBuilder as the filename prefix.
-        combined_keywords = (
-            self._combine_keyword_sources(
-                ner_words=ner_words,
-                image_keywords=image_keywords,
-            )
-        )
-
-        # Clean the text before constructing the final filename.
-        processed_text = remove_gibberish(
-            combined_keywords
-        )
-
-        processed_text = (
-            fix_common_ocr_mistakes(
-                processed_text
-            )
-        )
-
-        processed_text = (
-            self.filename_builder.sanitize_filename(
-                processed_text
-            )
-        )
-
+        # Only the model's selected keywords contribute to the filename.
+        # Raw OCR is retained for the multimodal prompt and date extraction.
         # Normalize the result in case a date helper returns a collection
         # rather than a plain string.
         date_prefix = self._value_to_text(
@@ -236,8 +169,8 @@ class ImageFileNamer:
 
         # Passing the date separately ensures that it remains first.
         new_file_name = (
-            self.filename_builder.build_optimized_filename(
-                words_text=processed_text,
+            self.filename_builder.build_keyword_filename(
+                words_text=self._value_to_text(image_keywords),
                 date_prefix=date_prefix,
                 max_length=self.max_filename_length,
             )
@@ -269,7 +202,7 @@ class ImageFileNamer:
             new_file_name = (
                 self.filename_builder.create_fallback_filename(
                     date_prefix
-                )
+                ).replace(" ", "")
             )
 
         print(

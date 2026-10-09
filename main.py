@@ -19,7 +19,7 @@ from src.utils import setup_dependencies
 def main():
     """Main entry point for the application."""
     parser = argparse.ArgumentParser(
-        description="Intelligent image file naming using OCR, LLM, and NER"
+        description="Intelligent image file naming using OCR and image keywords"
     )
     parser.add_argument(
         "--source",
@@ -76,6 +76,7 @@ def main():
     processor = BatchProcessor(rate_limit_per_minute=args.rate_limit)
 
     try:
+        processor.image_namer.content_processor.prepare_model()
         processor.process_images(source_path, target_path)
         print("✅ Processing completed successfully!")
         return 0

@@ -44,6 +44,10 @@ LEMONADE_BASE_URL = os.getenv(
 LEMONADE_MODEL = os.getenv("LEMONADE_MODEL", "Gemma-4-31B-it-MTP-GGUF")
 LEMONADE_API_KEY = os.getenv("LEMONADE_API_KEY", "")
 LEMONADE_TIMEOUT_SECONDS = float(os.getenv("LEMONADE_TIMEOUT_SECONDS", "300"))
+# Gemma 4 vision input must fit in the physical batch to avoid llama.cpp aborts.
+LEMONADE_LLAMACPP_ARGS = os.getenv(
+    "LEMONADE_LLAMACPP_ARGS", "--batch-size 2048 --ubatch-size 2048"
+)
 LEMONADE_MAX_RETRIES = 2
 LEMONADE_RETRY_BACKOFF_SECONDS = 2.0
 

@@ -1,6 +1,6 @@
 # image-file-namer
 
-Used to give image files descriptive filenames. Included is also a collection of scripts to prepare images by resizing for instance. Uses Tesseract (OCR), Lemonade (describe/choose most important words) and an NLP library (to extract keywords) to rename image files, giving them descriptive filenames.
+Used to give image files descriptive filenames. Included is also a collection of scripts to prepare images by resizing for instance. Uses Tesseract (OCR), Lemonade (describe/choose most important words) to rename image files, giving them descriptive filenames. Filenames use the date and only the model's image keywords, joined in PascalCase without spaces (for example, `20260923AmbitionSverigeFörstRiksdagen.jpg`).
 Example use cases are screenshots or downloaded images, to be able to find them based on a textual search on the filename.
 
 Used to require an API key and a path at Microsoft Azure, but since it's not possible to run this kind of thing locally at no extra cost that was preferred. 
@@ -35,10 +35,11 @@ Install and start [Lemonade](https://lemonade-server.ai/), then download the mod
 
 ```bash
 lemonade pull Gemma-4-31B-it-MTP-GGUF
-lemonade load Gemma-4-31B-it-MTP-GGUF
 python main.py --skip-setup
 ```
 
+The script loads the model automatically with `--batch-size 2048 --ubatch-size 2048`
+before processing images. Lemonade must already be running.
 The application uses `http://localhost:13305/api/v1` by default. Override
 `LEMONADE_BASE_URL`, `LEMONADE_MODEL`, `LEMONADE_API_KEY` or
 `LEMONADE_TIMEOUT_SECONDS` through environment variables if needed.
