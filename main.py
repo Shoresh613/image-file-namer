@@ -13,7 +13,7 @@ from src.config import (
     DEFAULT_TARGET_FOLDER,
     DEFAULT_RATE_LIMIT_PER_MINUTE,
 )
-from src.utils import clean_up_gpu_memory, setup_dependencies
+from src.utils import setup_dependencies
 
 
 def main():
@@ -71,9 +71,6 @@ def main():
     print(f"📁 Target folder: {target_path}")
     print(f"⚡ Rate limit: {args.rate_limit} images/minute")
     print("-" * 60)
-
-    # Clean up GPU memory before starting
-    clean_up_gpu_memory()
 
     # Create batch processor and run
     processor = BatchProcessor(rate_limit_per_minute=args.rate_limit)

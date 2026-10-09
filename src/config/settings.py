@@ -36,26 +36,16 @@ NER_CATEGORIES = [
     "WORK_OF_ART",  # Titles of books, songs
 ]
 
-# OCR and LLM settings
-# Ollama GPU settings. ``num_gpu`` is the number of *model layers* to offload,
-# not the number of physical GPUs. -1 asks Ollama to offload every layer that
-# fits, which is required for a full-GPU model run on Strix Halo.
-OLLAMA_MODEL_DESCRIPTION = "gemma4:26b-a4b-it-qat-gpu"
-OLLAMA_MODEL_KEYWORDS = "gemma4:26b-a4b-it-qat-gpu"
-OLLAMA_NUM_GPU = -1
-OLLAMA_NUM_CPU = 28
-# 64k covers high-resolution vision input plus OCR text. It is deliberately
-# below this project's model limit (262144) to leave unified memory available
-# for the desktop and avoid a driver-level OOM on Strix Halo.
-OLLAMA_NUM_CTX = int(os.getenv("OLLAMA_NUM_CTX", "65536"))
-OLLAMA_KEEP_ALIVE = os.getenv("OLLAMA_KEEP_ALIVE", "24h")
-# Refuse to continue if Ollama reports that the loaded model is substantially
-# in system RAM. Set to 0 only when deliberately allowing CPU/partial offload.
-OLLAMA_REQUIRE_FULL_GPU = os.getenv("OLLAMA_REQUIRE_FULL_GPU", "1") != "0"
-OLLAMA_MIN_VRAM_RATIO = float(os.getenv("OLLAMA_MIN_VRAM_RATIO", "0.98"))
-OLLAMA_MIN_SECONDS_BETWEEN_CALLS = 1.0
-OLLAMA_MAX_RETRIES = 2
-OLLAMA_RETRY_BACKOFF_SECONDS = 2.0
+# Lemonade's OpenAI-compatible API. Model loading, context size and GPU
+# backend are managed by Lemonade rather than per-request Ollama options.
+LEMONADE_BASE_URL = os.getenv(
+    "LEMONADE_BASE_URL", "http://localhost:13305/api/v1"
+).rstrip("/")
+LEMONADE_MODEL = os.getenv("LEMONADE_MODEL", "Gemma-4-31B-it-MTP-GGUF")
+LEMONADE_API_KEY = os.getenv("LEMONADE_API_KEY", "")
+LEMONADE_TIMEOUT_SECONDS = float(os.getenv("LEMONADE_TIMEOUT_SECONDS", "300"))
+LEMONADE_MAX_RETRIES = 2
+LEMONADE_RETRY_BACKOFF_SECONDS = 2.0
 
 # OCR language configuration (Tesseract language codes separated by '+')
 OCR_LANGUAGES = "eng+swe+deu"

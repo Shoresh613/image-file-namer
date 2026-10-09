@@ -83,7 +83,7 @@ filename = namer.generate_new_filename("image.jpg")
 
 #### `ImageFileNamer`
 Main orchestration class that coordinates all processing steps:
-- OCR text extraction via Docling
+- OCR text extraction via Tesseract
 - Image description via LLM
 - Date detection with fallback hierarchy
 - Named entity recognition via spaCy
@@ -106,8 +106,8 @@ Advanced filename generation with:
 ### Processors
 
 #### `ContentProcessor`
-- OCR text extraction using Docling
-- Image description via Ollama LLM
+- OCR text extraction using Tesseract
+- Image description via Lemonade LLM
 - Keyword extraction and selection
 
 #### `NERProcessor`
@@ -138,9 +138,9 @@ All configuration is centralized in `src/config/settings.py`:
 DEFAULT_MAX_FILENAME_LENGTH = 135
 DEFAULT_RATE_LIMIT_PER_MINUTE = 100
 
-# Modify LLM models
-OLLAMA_MODEL_DESCRIPTION = "gemma3:4b-it-qat" 
-OLLAMA_MODEL_KEYWORDS = "gemma3:4b-it-qat"
+# Modify the Lemonade connection and model (also configurable via environment)
+LEMONADE_BASE_URL = "http://localhost:13305/api/v1"
+LEMONADE_MODEL = "Gemma-4-31B-it-MTP-GGUF"
 
 # Adjust NER categories
 NER_CATEGORIES = ["PERSON", "ORG", "GPE", "LOC", ...]

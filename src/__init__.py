@@ -2,8 +2,8 @@
 Image File Namer - A modular system for intelligently renaming image files.
 
 This package provides intelligent image file renaming capabilities using:
-- OCR text extraction via Docling
-- Content analysis via local LLM (Ollama)
+- OCR text extraction via Tesseract
+- Content analysis via local LLM (Lemonade)
 - Named Entity Recognition via spaCy
 - Smart date detection from multiple sources
 - Optimized filename generation with deduplication and filtering

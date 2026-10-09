@@ -1,5 +1,8 @@
 # Säker Ollama-körning på AMD Strix Halo (Linux)
 
+> Historisk guide för den tidigare Ollama-integrationen. Projektet använder nu
+> [Lemonade](lemonade.md). Inställningarna nedan gäller inte den aktuella koden.
+
 Projektet begär nu full modell-offload (`num_gpu=-1`), håller modellen laddad i
 GPU-minnet i 24 timmar och stoppar körningen om `ollama ps` inte visar att minst
 98 % av modellens byte ligger i GPU-minnet. `num_gpu=1` betyder **ett

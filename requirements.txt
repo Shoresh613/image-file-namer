@@ -3,7 +3,5 @@
 langdetect
 # yake
 spacy
-ollama
-torch
 pytesseract
 Pillow

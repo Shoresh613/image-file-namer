@@ -1,6 +1,6 @@
 # image-file-namer
 
-Used to give image files descriptive filenames. Included is also a collection of scripts to prepare images by resizing for instance. Uses Tesseract (OCR), Ollama (describe/choose most important words) and an NLP library (to extract keywords) to rename image files, giving them descriptive filenames.
+Used to give image files descriptive filenames. Included is also a collection of scripts to prepare images by resizing for instance. Uses Tesseract (OCR), Lemonade (describe/choose most important words) and an NLP library (to extract keywords) to rename image files, giving them descriptive filenames.
 Example use cases are screenshots or downloaded images, to be able to find them based on a textual search on the filename.
 
 Used to require an API key and a path at Microsoft Azure, but since it's not possible to run this kind of thing locally at no extra cost that was preferred. 
@@ -31,7 +31,20 @@ sudo apt-get install tesseract-ocr tesseract-ocr-eng tesseract-ocr-swe tesseract
 pip install -r requirements.txt
 ```
 
-There is also need to install Ollama, and pulling the desired model. Default is `gemma3:4b-it-qat`.
+Install and start [Lemonade](https://lemonade-server.ai/), then download the model:
+
+```bash
+lemonade pull Gemma-4-31B-it-MTP-GGUF
+lemonade load Gemma-4-31B-it-MTP-GGUF
+python main.py --skip-setup
+```
+
+The application uses `http://localhost:13305/api/v1` by default. Override
+`LEMONADE_BASE_URL`, `LEMONADE_MODEL`, `LEMONADE_API_KEY` or
+`LEMONADE_TIMEOUT_SECONDS` through environment variables if needed.
+Images are sent with their original bytes together with OCR text, in one
+OpenAI-compatible chat request. Context size and GPU backend are configured
+in Lemonade; see [the Lemonade guide](docs/lemonade.md).
 
 ### Folders
 All relative to the git directory:

@@ -21,12 +21,12 @@ class ImageFileNamer:
     This class combines:
 
     1. Tesseract OCR
-    2. Image analysis through Ollama
+    2. Image analysis through Lemonade
     3. Named entity recognition
     4. Date extraction
     5. Filename sanitization and optimization
 
-    Only one Ollama request is made per image.
+    Only one Lemonade request is made per image.
 
     Date detection hierarchy:
 
@@ -117,7 +117,7 @@ class ImageFileNamer:
         Generate a new filename for an image.
 
         The ContentProcessor first extracts OCR text and then performs one
-        combined Ollama request using both the image and OCR text.
+        combined Lemonade request using both the image and OCR text.
 
         Date detection uses this priority:
 
@@ -139,7 +139,7 @@ class ImageFileNamer:
             f"\nProcessing image: {image_path}"
         )
 
-        # Performs Tesseract OCR followed by one combined Ollama request.
+        # Performs Tesseract OCR followed by one combined Lemonade request.
         ocr_text, image_keywords = (
             self.content_processor.process_image(
                 image_path
